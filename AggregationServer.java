@@ -26,23 +26,8 @@ public class AggregationServer {
                 OutputStream outputStream = socket.getOutputStream();
                 PrintWriter writer = new PrintWriter(outputStream, true);
 
-                System.out.println("About to read client request");
-
-                // Read the HTTP request from the client
-                String request = reader.readLine();
-
-                System.out.println("Just read client request");
-                if (request != null && request.startsWith("GET")) {
-                    // Process the request and send the appropriate response
-                    String response = "HTTP/1.1 200 OK\r\n\r\nHello, here's the weather info!";
-                    System.out.println("Sending 200");
-                    writer.println(response);
-                } else {
-                    String response = "HTTP/1.1 400 Bad Request\r\n\r\nInvalid request!";
-                    System.out.println("Sending 400");
-                    writer.println(response);
-                }
-
+                handleRequest(reader, writer);
+                
                 socket.close();
             }
         } catch (UnknownHostException ex) {
@@ -54,4 +39,57 @@ public class AggregationServer {
             System.out.println("I/O error: " + ex.getMessage());
         }
     }
+
+    private static void handleRequest(
+        BufferedReader reader,
+        PrintWriter writer
+    ) throws IOException {
+        // Read the HTTP request from the client
+        String request = reader.readLine();
+
+        System.out.println("Just read client request");
+        if (request != null && request.startsWith("GET")) {
+            handleGETRequest(writer);
+
+        } else if (request != null && request.startsWith("PUT")) {
+            handlePUTRequest(reader, writer);
+        } else {
+            String response = "HTTP/1.1 400 Bad Request\r\n\r\nInvalid request!";
+            System.out.println("Sending 400");
+            writer.println(response);
+        }
+    }
+
+    private static void handleGETRequest(
+        PrintWriter writer
+    ) {
+        // Process the request and send the appropriate response
+        String response = "HTTP/1.1 200 OK\r\n\r\nHello, here's the weather info!";
+        System.out.println("Sending 200");
+        writer.println(response);
+    }
+
+        private static void handlePUTRequest(
+            BufferedReader reader,
+            PrintWriter writer
+        ) throws IOException {
+            String line;
+            while (!(line = reader.readLine()).isEmpty()) {
+                // Skip headers for now
+            }
+
+            // Read the JSON body from the request
+            StringBuilder jsonBody = new StringBuilder();
+
+            while ((line = reader.readLine()) != null) {
+                jsonBody.append(line);
+            }
+
+            String parsedJSONString = jsonBody.toString();
+
+            // Process the JSON body
+            writer.println("HTTP/1.1 200 OK\r\n\r\n" + "Received JSON: " + parsedJSONString);
+
+    }
+
 }
