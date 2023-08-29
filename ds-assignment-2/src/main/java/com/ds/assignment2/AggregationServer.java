@@ -2,7 +2,9 @@ package com.ds.assignment2;
 
 import java.io.*;
 import java.net.*;
-import com.fasterxml.jackson.core.*;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class AggregationServer {
 
@@ -10,7 +12,7 @@ public class AggregationServer {
         int port = 8080;
 
         if (args.length >= 1) {
-            port = Integer.parseInt(args[1]);
+            port = Integer.parseInt(args[0]);
         }
  
         try (ServerSocket serverSocket = new ServerSocket(port)) {
@@ -33,12 +35,14 @@ public class AggregationServer {
                 
                 socket.close();
             }
+
         } catch (UnknownHostException ex) {
- 
             System.out.println("Server not found: " + ex.getMessage());
- 
+         } catch (JsonParseException ex) {
+            System.out.println("JSON parsing error: " + ex.getMessage());
+        } catch (JsonMappingException ex) {
+            System.out.println("JSON mapping error: " + ex.getMessage());
         } catch (IOException ex) {
- 
             System.out.println("I/O error: " + ex.getMessage());
         }
     }
@@ -72,26 +76,26 @@ public class AggregationServer {
         writer.println(response);
     }
 
-        private static void handlePUTRequest(
-            BufferedReader reader,
-            PrintWriter writer
-        ) throws IOException {
-            String line;
-            while (!(line = reader.readLine()).isEmpty()) {
-                // Skip headers for now
-            }
+    private static void handlePUTRequest(
+        BufferedReader reader,
+        PrintWriter writer
+    ) throws IOException {
+        String line;
+        while (!(line = reader.readLine()).isEmpty()) {
+            // Skip headers for now
+        }
 
-            // Read the JSON body from the request
-            StringBuilder jsonBody = new StringBuilder();
+        // Read the JSON body from the request
+        StringBuilder jsonBody = new StringBuilder();
 
-            while ((line = reader.readLine()) != null) {
-                jsonBody.append(line);
-            }
+        while ((line = reader.readLine()) != null) {
+            jsonBody.append(line);
+        }
 
-            String parsedJSONString = jsonBody.toString();
+        String parsedJSONString = jsonBody.toString();
 
-            // Process the JSON body
-            writer.println("HTTP/1.1 200 OK\r\n\r\n" + "Received JSON: " + parsedJSONString);
+        // Process the JSON body
+        writer.println("HTTP/1.1 200 OK\r\n\r\n" + "Received JSON: " + parsedJSONString);
 
     }
 

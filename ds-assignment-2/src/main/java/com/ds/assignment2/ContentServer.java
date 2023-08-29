@@ -1,6 +1,7 @@
 package com.ds.assignment2;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -8,6 +9,12 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.HashMap;
+import java.util.Map;
+
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class ContentServer {
     public static void main(String[] args) {
@@ -27,13 +34,18 @@ public class ContentServer {
             OutputStream outputStream = socket.getOutputStream();
             PrintWriter writer = new PrintWriter(outputStream, true);
  
-            String jsonBody = "{\"temperature\": 25, \"humidity\": 60}";
+            //Get JSON file contents
+            ObjectMapper mapper = new ObjectMapper();
+            Map<String, Object> jsonBody = new HashMap<String, Object>();
+
+            jsonBody = mapper.readValue(new File("target/classes/com/ds/assignment2/content-server-input/weather-data1.json"), Map.class);
+            String jsonBodyString = jsonBody.toString();
 
             // Send the PUT request
             writer.println("PUT / HTTP/1.1");
             writer.println("Host: " + hostname);
             writer.println("Content-Type: application/json");
-            writer.println("Content-Length: " + jsonBody.length());
+            writer.println("Content-Length: " + jsonBodyString.length());
             writer.println();
             writer.println(jsonBody);
             
@@ -49,11 +61,12 @@ public class ContentServer {
  
  
         } catch (UnknownHostException ex) {
- 
             System.out.println("Server not found: " + ex.getMessage());
- 
+         } catch (JsonParseException ex) {
+            System.out.println("JSON parsing error: " + ex.getMessage());
+        } catch (JsonMappingException ex) {
+            System.out.println("JSON mapping error: " + ex.getMessage());
         } catch (IOException ex) {
- 
             System.out.println("I/O error: " + ex.getMessage());
         }
     }

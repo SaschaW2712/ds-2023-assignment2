@@ -1,15 +1,16 @@
 all: compile
 JAVAPATH=src/main/java/com/ds/assignment2
 CLASSESPATH=target/classes
+PKGNAME=com.ds.assignment2
 
 compile: ${JAVAPATH}/AggregationServer.java ${JAVAPATH}/ContentServer.java ${JAVAPATH}/GETClient.java
 	mvn compile
 
-server: ${CLASSESPATH}/AggregationServer.class
-	java -classpath ${CLASSESPATH} AggregationServer
+server:
+	mvn exec:java@server -Dexec.args="8080"
 
-content: ${CLASSESPATH}/AggregationServer.class ${CLASSESPATH}/ContentServer.class
-	java -classpath ${CLASSESPATH} ContentServer
+content:
+	mvn exec:java@content
 
-client:  ${CLASSESPATH}/AggregationServer.class ${CLASSESPATH}/GETClient.class
-	java -classpath ${CLASSESPATH} GETClient
+client:
+	mvn exec:java@client

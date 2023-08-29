@@ -75,6 +75,31 @@
           <artifactId>maven-project-info-reports-plugin</artifactId>
           <version>3.0.0</version>
         </plugin>
+        <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>1.2.1</version>
+            <executions>
+          <execution>
+            <id>server</id>
+            <configuration>
+              <mainClass>com.ds.assignment2.AggregationServer</mainClass>
+            </configuration>
+          </execution>
+          <execution>
+            <id>client</id>
+            <configuration>
+              <mainClass>com.ds.assignment2.GETClient</mainClass>
+            </configuration>
+          </execution>
+          <execution>
+            <id>content</id>
+            <configuration>
+              <mainClass>com.ds.assignment2.ContentServer</mainClass>
+            </configuration>
+          </execution>
+        </executions>
+        </plugin>
       </plugins>
     </pluginManagement>
   </build>
