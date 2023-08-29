@@ -26,13 +26,24 @@ public class AggregationServer {
                 OutputStream outputStream = socket.getOutputStream();
                 PrintWriter writer = new PrintWriter(outputStream, true);
 
+                System.out.println("About to read client request");
+
+                // Read the HTTP request from the client
                 String request = reader.readLine();
-                System.out.println("Received request: " + request);
 
-                // Process the request (in this case, just sending a basic response)
-                String response = "HTTP/1.1 200 OK\r\n\r\nHello, this is a basic server!";
-                writer.println(response);
+                System.out.println("Just read client request");
+                if (request != null && request.startsWith("GET")) {
+                    // Process the request and send the appropriate response
+                    String response = "HTTP/1.1 200 OK\r\n\r\nHello, here's the weather info!";
+                    System.out.println("Sending 200");
+                    writer.println(response);
+                } else {
+                    String response = "HTTP/1.1 400 Bad Request\r\n\r\nInvalid request!";
+                    System.out.println("Sending 400");
+                    writer.println(response);
+                }
 
+                socket.close();
             }
         } catch (UnknownHostException ex) {
  

@@ -2,6 +2,8 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
@@ -16,12 +18,24 @@ public class GETClient {
  
         try (Socket socket = new Socket(hostname, port)) {
  
+            System.out.println("Connected to server socket");
             InputStream inputStream = socket.getInputStream();
             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+            
+            OutputStream outputStream = socket.getOutputStream();
+            PrintWriter writer = new PrintWriter(outputStream, true);
  
-            String content = reader.readLine();
+            // Send the GET request
+            writer.println("GET / HTTP/1.1");
+            writer.println("Host: " + hostname);
+            writer.println();
+
+            System.out.println("Reading from server");
  
-            System.out.println(content);
+            String line;
+            while ((line = reader.readLine()) != null) {
+                System.out.println(line);
+            }
  
  
         } catch (UnknownHostException ex) {
