@@ -70,10 +70,22 @@ public class AggregationServer {
     private static void handleGETRequest(
         PrintWriter writer
     ) {
-        // Process the request and send the appropriate response
-        String response = "HTTP/1.1 200 OK\r\n\r\nHello, here's the weather info!";
-        System.out.println("Sending 200");
-        writer.println(response);
+        try {
+            // Process the request and send the appropriate response
+            ObjectMapper mapper = new ObjectMapper();
+            File latestDataFile = new File("target/classes/com/ds/assignment2/weather-data/data");
+            String weatherData = mapper.writeValueAsString(mapper.readTree(latestDataFile));
+
+            System.out.println(weatherData);
+            String response = "HTTP/1.1 200 OK\n\n" + weatherData;
+            System.out.println("Sending 200");
+
+            // Write the JSON line to the writer
+            writer.println(response);
+            
+        } catch (Exception ex) {
+            System.out.println("Error in GET request handler: " + ex.getLocalizedMessage());
+        }
     }
 
     private static void handlePUTRequest(
@@ -99,11 +111,12 @@ public class AggregationServer {
         WeatherData data = mapper.readValue(parsedJSONString, WeatherData.class);
 
         //Write data to file immediately
-        mapper.writeValue(new File("target/classes/com/ds/assignment2/weather-data/" + data.id), data);
+        mapper.writeValue(new File("target/classes/com/ds/assignment2/weather-data/" + "data"), data);
+
+        System.out.println("Sending 200 to PUT client");
 
         // Respond
         writer.println("HTTP/1.1 200 OK\r\n\r\n" + "Received JSON: " + parsedJSONString);
-
     }
 
 }

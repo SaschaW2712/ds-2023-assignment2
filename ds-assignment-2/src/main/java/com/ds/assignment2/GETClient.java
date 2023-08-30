@@ -9,6 +9,8 @@ import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 public class GETClient {
     public static void main(String[] args) {
         String hostname = "localhost";
@@ -34,11 +36,17 @@ public class GETClient {
 
             System.out.println("Reading from server");
  
+            WeatherData weatherData;
             String line;
-            while ((line = reader.readLine()) != null) {
-                System.out.println(line);
+            while (!(line = reader.readLine()).isEmpty()) {
+                // Skip headers for now
             }
- 
+    
+            ObjectMapper mapper = new ObjectMapper();
+
+            weatherData = mapper.readValue(reader.readLine(), WeatherData.class);
+
+            weatherData.printData();
  
         } catch (UnknownHostException ex) {
  

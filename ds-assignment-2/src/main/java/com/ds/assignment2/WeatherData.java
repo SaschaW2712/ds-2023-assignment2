@@ -103,6 +103,26 @@ public class WeatherData {
         }
     }
 
+    public void printData() {
+        System.out.println(this.id);
+        System.out.println(this.name);
+        System.out.println(this.state);
+        System.out.println(this.timeZone);
+        System.out.println(this.lat);
+        System.out.println(this.lon);
+        System.out.println(this.localDateTimeStamp);
+        System.out.println(this.localDateTimeMilliseconds);
+        System.out.println(this.airTemp);
+        System.out.println(this.apparentTemp);
+        System.out.println(this.cloud);
+        System.out.println(this.dewPT);
+        System.out.println(this.pressure);
+        System.out.println(this.relativeHumidity);
+        System.out.println(this.windDirection);
+        System.out.println(this.windSpeedKMH);
+        System.out.println(this.windSpeedKT);
+    }
+
     public void parseInputKeyValuePair(String key, String value) {
         //TODO: validate input
         try {
