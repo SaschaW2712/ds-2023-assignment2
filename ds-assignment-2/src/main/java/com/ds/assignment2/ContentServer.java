@@ -11,6 +11,7 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Map;
+import com.ds.assignment2.WeatherData;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -34,24 +35,20 @@ public class ContentServer {
             OutputStream outputStream = socket.getOutputStream();
             PrintWriter writer = new PrintWriter(outputStream, true);
  
-            //Get JSON file contents
+            //Parse data file
             ObjectMapper mapper = new ObjectMapper();
-            Map<String, Object> jsonBody = new HashMap<String, Object>();
 
-            jsonBody = mapper.readValue(new File("target/classes/com/ds/assignment2/content-server-input/weather-data1.json"), Map.class);
-            String jsonBodyString = jsonBody.toString();
+            WeatherData weatherData = new WeatherData("target/classes/com/ds/assignment2/content-server-input/weather-data1.txt");
 
-            // Send the PUT request
-            writer.println("PUT / HTTP/1.1");
-            writer.println("Host: " + hostname);
-            writer.println("Content-Type: application/json");
-            writer.println("Content-Length: " + jsonBodyString.length());
-            writer.println();
-            writer.println(jsonBody);
+            String jsonBodyString = mapper.writeValueAsString(weatherData);
+
+            //Send PUT request to aggregation server
+            sendPUTRequest(writer, hostname, jsonBodyString);
             
             // Shutdown output to signal the end of the request
             socket.shutdownOutput();
 
+            //Read server response
             System.out.println("Reading from server");
  
             String line;
@@ -69,5 +66,16 @@ public class ContentServer {
         } catch (IOException ex) {
             System.out.println("I/O error: " + ex.getMessage());
         }
+    }
+
+    public static void sendPUTRequest(PrintWriter writer, String hostname, String jsonBodyString) {
+            // Send the PUT request
+            writer.println("PUT / HTTP/1.1");
+            writer.println("Host: " + hostname);
+            writer.println("Content-Type: application/json");
+            writer.println("Content-Length: " + jsonBodyString.length());
+            writer.println();
+            writer.println(jsonBodyString);
+
     }
 }
