@@ -97,9 +97,11 @@ public class AggregationServer {
         ObjectMapper mapper = new ObjectMapper();
 
         WeatherData data = mapper.readValue(parsedJSONString, WeatherData.class);
+
+        //Write data to file immediately
         mapper.writeValue(new File("target/classes/com/ds/assignment2/weather-data/" + data.id), data);
 
-        // Process the JSON body
+        // Respond
         writer.println("HTTP/1.1 200 OK\r\n\r\n" + "Received JSON: " + parsedJSONString);
 
     }
