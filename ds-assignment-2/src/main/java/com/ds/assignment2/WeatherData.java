@@ -104,23 +104,23 @@ public class WeatherData {
     }
 
     public void printData() {
-        System.out.println(this.id);
-        System.out.println(this.name);
-        System.out.println(this.state);
-        System.out.println(this.timeZone);
-        System.out.println(this.lat);
-        System.out.println(this.lon);
-        System.out.println(this.localDateTimeStamp);
-        System.out.println(this.localDateTimeMilliseconds);
-        System.out.println(this.airTemp);
-        System.out.println(this.apparentTemp);
-        System.out.println(this.cloud);
-        System.out.println(this.dewPT);
-        System.out.println(this.pressure);
-        System.out.println(this.relativeHumidity);
-        System.out.println(this.windDirection);
-        System.out.println(this.windSpeedKMH);
-        System.out.println(this.windSpeedKT);
+        System.out.println("Content server id: " + this.id);
+        System.out.println("Name: " + this.name);
+        System.out.println("State: " + this.state);
+        System.out.println("Time zone: " + this.timeZone);
+        System.out.println("Latitude: " + this.lat);
+        System.out.println("Longitude: " + this.lon);
+        System.out.println("Local date & time: " + this.localDateTimeStamp);
+        System.out.println("Local data & time (long): " + this.localDateTimeMilliseconds);
+        System.out.println("Air temperature: " + this.airTemp);
+        System.out.println("Apparent temperature: " + this.apparentTemp);
+        System.out.println("Cloud: " + this.cloud);
+        System.out.println("Dew PT: " + this.dewPT);
+        System.out.println("Pressure: " + this.pressure);
+        System.out.println("Relative humidity: " + this.relativeHumidity);
+        System.out.println("Wind direction: " + this.windDirection);
+        System.out.println("Wind speed (KMH): " + this.windSpeedKMH);
+        System.out.println("Wind speed (KT): " + this.windSpeedKT);
     }
 
     public void parseInputKeyValuePair(String key, String value) {
