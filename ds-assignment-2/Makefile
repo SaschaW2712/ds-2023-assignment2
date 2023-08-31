@@ -10,7 +10,7 @@ server:
 	mvn exec:java@server -Dexec.args="4567"
 
 content:
-	mvn exec:java@content
+	mvn exec:java@content -Dexec.args="localhost 4567"
 
 client:
 	mvn exec:java@client
