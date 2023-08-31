@@ -15,9 +15,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class ContentServer {
 
-    LamportClock clock = new LamportClock();
+    public static LamportClock clock = new LamportClock();
 
-    public void main(String[] args) {
+    public static void main(String[] args) {
         String hostname = "localhost";
         int port = 8080;
         if (args.length >= 2) {
@@ -60,7 +60,7 @@ public class ContentServer {
         }
     }
 
-    public void sendPUTRequest(PrintWriter writer, String hostname, String jsonBodyString) {
+    public static void sendPUTRequest(PrintWriter writer, String hostname, String jsonBodyString) {
             // Send the PUT request
             writer.println("PUT / HTTP/1.1");
             writer.println("Host: " + hostname);
@@ -72,19 +72,17 @@ public class ContentServer {
 
     }
 
-    public void handleServerResponse(BufferedReader reader) {
+    public static void handleServerResponse(BufferedReader reader) {
         try {
             //Read server response
             System.out.println("Reading from server");
  
             String line;
-
-            System.out.println(reader.readLine());
-
-            String clockLine = reader.readLine().split(":")[1];
-            System.out.println("clock: " + clockLine);
-
             while ((line = reader.readLine()) != null) {
+                if (line.startsWith("CLOCK: ")) {
+                    String clockLine = line.split(":")[1].trim();
+                    System.out.println("the clock: " + clockLine);
+                }
                 System.out.println(line);
             }
         } catch(IOException ex) {

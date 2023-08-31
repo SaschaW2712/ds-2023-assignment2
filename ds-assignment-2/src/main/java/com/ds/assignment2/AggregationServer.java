@@ -100,7 +100,7 @@ public class AggregationServer {
         String line;
         while (!(line = reader.readLine()).isEmpty()) {
             if (line.startsWith("Clock-Time:")) {
-                int contentServerClockTime = Integer.parseInt(line.split(":", 2)[1]);
+                int contentServerClockTime = Integer.parseInt(line.split(":", 2)[1].trim());
                 clock.updateValue(contentServerClockTime);
             }
         }
