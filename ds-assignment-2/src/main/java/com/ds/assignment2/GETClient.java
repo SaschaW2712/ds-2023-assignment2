@@ -37,8 +37,7 @@ public class GETClient {
             System.out.println("Reading from server");
  
             WeatherData weatherData;
-            String line;
-            while (!(line = reader.readLine()).isEmpty()) {
+            while (!(reader.readLine()).isEmpty()) {
                 // Skip headers for now
             }
     
