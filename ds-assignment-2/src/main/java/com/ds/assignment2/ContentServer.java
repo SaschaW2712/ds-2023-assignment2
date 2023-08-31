@@ -37,7 +37,7 @@ public class ContentServer {
             //Parse data file
             ObjectMapper mapper = new ObjectMapper();
 
-            WeatherData weatherData = new WeatherData("target/classes/com/ds/assignment2/content-server-input/weather-data1.txt");
+            WeatherData weatherData = new WeatherData(clock.getValue(), "target/classes/com/ds/assignment2/content-server-input/weather-data1.txt");
 
             String jsonBodyString = mapper.writeValueAsString(weatherData);
 
@@ -79,7 +79,7 @@ public class ContentServer {
  
             String line;
             while ((line = reader.readLine()) != null) {
-                if (line.startsWith("CLOCK: ")) {
+                if (line.startsWith("Clock-Time: ")) {
                     String clockLine = line.split(":")[1].trim();
                     System.out.println("the clock: " + clockLine);
                 }

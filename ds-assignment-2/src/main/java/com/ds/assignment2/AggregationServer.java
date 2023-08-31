@@ -61,7 +61,7 @@ public class AggregationServer {
 
         System.out.println("Just read client request");
         if (request != null && request.startsWith("GET")) {
-            handleGETRequest(writer);
+            handleGETRequest(reader, writer);
 
         } else if (request != null && request.startsWith("PUT")) {
             handlePUTRequest(reader, writer);
@@ -73,16 +73,30 @@ public class AggregationServer {
     }
 
     private static void handleGETRequest(
+        BufferedReader reader,
         PrintWriter writer
     ) {
         try {
+            String line;
+            while (!(line = reader.readLine()).isEmpty()) {
+                if (line.startsWith("Clock-Time:")) {
+                    int getClientClockTime = Integer.parseInt(line.split(":", 2)[1].trim());
+
+                    System.out.println("GET client clock time: " + getClientClockTime);
+                    System.out.println("Server clock time: " + clock.getValue());
+                    clock.updateValue(getClientClockTime);
+
+                    System.out.println("Server updated clock time: " + clock.getValue());
+                }
+            }
+
             // Process the request and send the appropriate response
             ObjectMapper mapper = new ObjectMapper();
             File latestDataFile = new File("target/classes/com/ds/assignment2/weather-data/data");
             String weatherData = mapper.writeValueAsString(mapper.readTree(latestDataFile));
 
             System.out.println(weatherData);
-            String response = "HTTP/1.1 200 OK\n" + "CLOCK: " + clock.getValue() + "\n\n" + weatherData;
+            String response = "HTTP/1.1 200 OK\n" + "Clock-Time: " + clock.getValue() + "\n\n" + weatherData;
             System.out.println("Sending 200");
 
             // Write the JSON line to the writer
@@ -101,7 +115,12 @@ public class AggregationServer {
         while (!(line = reader.readLine()).isEmpty()) {
             if (line.startsWith("Clock-Time:")) {
                 int contentServerClockTime = Integer.parseInt(line.split(":", 2)[1].trim());
+
+                System.out.println("PUT client's clock time: " + contentServerClockTime);
+                System.out.println("Server clock time: " + clock.getValue());
+                
                 clock.updateValue(contentServerClockTime);
+                System.out.println("Server updated clock time: " + clock.getValue());
             }
         }
 
@@ -124,7 +143,6 @@ public class AggregationServer {
         System.out.println("Sending 200 to PUT client");
 
         // Respond
-        writer.println("HTTP/1.1 200 OK\n" + "CLOCK: " + clock.getValue() + "\n\n" + "Received JSON: " + parsedJSONString);
+        writer.println("HTTP/1.1 200 OK\n" + "Clock-Time: " + clock.getValue() + "\n\n" + "Received JSON: " + parsedJSONString);
     }
-
 }

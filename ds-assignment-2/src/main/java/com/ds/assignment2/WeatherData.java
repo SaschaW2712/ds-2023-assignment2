@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class WeatherData {
     String id;
+    int createdAtClockTime;
     String name;
     String state;
     String timeZone;
@@ -30,6 +31,7 @@ public class WeatherData {
     public WeatherData() {}
 
     public WeatherData(
+        int clockTime,
         String id,
         String name,
         String state,
@@ -48,6 +50,7 @@ public class WeatherData {
         int windSpeedKMH,
         int windSpeedKT
     ) {
+        this.createdAtClockTime = clockTime;
         this.id = id;
         this.name = name;
         this.state =  state;
@@ -67,7 +70,9 @@ public class WeatherData {
         this.windSpeedKT = windSpeedKT;
     }
 
-    public WeatherData(String filePath) {
+    public WeatherData(int clockTime, String filePath) {
+        this.createdAtClockTime = clockTime;
+
         try {
 			BufferedReader reader = new BufferedReader(new FileReader(filePath));
 			String line = reader.readLine();
@@ -218,6 +223,14 @@ public class WeatherData {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public int getClockTime() {
+        return createdAtClockTime;
+    }
+
+    public void setClockTime(int clockTime) {
+        this.createdAtClockTime = clockTime;
     }
 
     public String getName() {
