@@ -6,12 +6,26 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+/*
+ * TODO:
+ *      - Server replicas
+ *      - Store weather data in a single file
+ *      - Handle updating weather data
+ *          - Deleting data older than 30 seconds, or whose content server isn't around any more
+ *          - Deleting older than last 20 entries
+ *      - Send weather data matching client's lamport clock
+ *      - PUT requests being inserted in Lamport clock order, not timestamp
+ *      - Automated testing
+ *      - Invalid requests
+ *      - Handling when not all fields are there for weather data
+ *      - Handling multiple data pieces in one file (content server)
+ */
 public class AggregationServer {
 
     public static LamportClock clock = new LamportClock();
 
     public static void main(String[] args) {
-        int port = 8080;
+        int port = 4567;
 
         if (args.length >= 1) {
             port = Integer.parseInt(args[0]);
@@ -135,8 +149,7 @@ public class AggregationServer {
 
         WeatherData data = mapper.readValue(parsedJSONString, WeatherData.class);
 
-        //Write data to file immediately
-        mapper.writeValue(new File("target/classes/com/ds/assignment2/weather-data/" + "data"), data);
+        updateWeatherData(data);
 
         System.out.println("Sending 200 to PUT client");
 
@@ -168,5 +181,21 @@ public class AggregationServer {
         } catch (Exception ex) {
             System.out.println("Error in bad request handler: " + ex.getLocalizedMessage());
         } 
+    }
+
+    public static void updateWeatherData(
+        WeatherData weatherData
+    ) {
+        try {
+        ObjectMapper mapper = new ObjectMapper();
+
+        //Write data to file immediately
+        mapper.writeValue(new File("target/classes/com/ds/assignment2/weather-data/" + "data"), weatherData);
+
+        //We only keep: last 20, data from content servers active in the last 30 seconds that are still connected
+
+        } catch(Exception ex) {
+            System.out.println("Error updating weather data: " + ex.getLocalizedMessage());
+        }
     }
 }

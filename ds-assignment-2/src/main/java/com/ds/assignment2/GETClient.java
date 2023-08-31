@@ -18,7 +18,7 @@ public class GETClient {
     public static int retries = 0;
 
     public static String hostname = "localhost";
-    public static int port = 3456;
+    public static int port = 4567;
     
     public static void main(String[] args) {
         if (args.length >= 2) {
