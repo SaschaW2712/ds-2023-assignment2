@@ -14,7 +14,10 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class ContentServer {
-    public static void main(String[] args) {
+
+    LamportClock clock = new LamportClock();
+
+    public void main(String[] args) {
         String hostname = "localhost";
         int port = 8080;
         if (args.length >= 2) {
@@ -44,14 +47,7 @@ public class ContentServer {
             // Shutdown output to signal the end of the request
             socket.shutdownOutput();
 
-            //Read server response
-            System.out.println("Reading from server");
- 
-            String line;
-            while ((line = reader.readLine()) != null) {
-                System.out.println(line);
-            }
- 
+            handleServerResponse(reader);
  
         } catch (UnknownHostException ex) {
             System.out.println("Server not found: " + ex.getMessage());
@@ -64,14 +60,35 @@ public class ContentServer {
         }
     }
 
-    public static void sendPUTRequest(PrintWriter writer, String hostname, String jsonBodyString) {
+    public void sendPUTRequest(PrintWriter writer, String hostname, String jsonBodyString) {
             // Send the PUT request
             writer.println("PUT / HTTP/1.1");
             writer.println("Host: " + hostname);
             writer.println("Content-Type: application/json");
             writer.println("Content-Length: " + jsonBodyString.length());
+            writer.println("Clock-Time: " + clock.getValue());
             writer.println();
             writer.println(jsonBodyString);
 
+    }
+
+    public void handleServerResponse(BufferedReader reader) {
+        try {
+            //Read server response
+            System.out.println("Reading from server");
+ 
+            String line;
+
+            System.out.println(reader.readLine());
+
+            String clockLine = reader.readLine().split(":")[1];
+            System.out.println("clock: " + clockLine);
+
+            while ((line = reader.readLine()) != null) {
+                System.out.println(line);
+            }
+        } catch(IOException ex) {
+            System.out.println("IOException handling server resonse: " + ex.getLocalizedMessage());
+        }
     }
 }
