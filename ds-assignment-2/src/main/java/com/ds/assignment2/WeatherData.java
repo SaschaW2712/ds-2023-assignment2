@@ -216,6 +216,32 @@ public class WeatherData {
         }
     }
 
+    public Boolean equalsS(WeatherData b) {        
+        if (
+            this.id != b.id ||
+            this.name != b.name ||
+            this.state !=  b.state ||
+            this.timeZone != b.timeZone ||
+            this.lat != b.lat ||
+            this.lon != b.lon ||
+            this.localDateTimeStamp != b.localDateTimeStamp ||
+            this.localDateTimeMilliseconds != b.localDateTimeMilliseconds ||
+            this.airTemp != b.airTemp ||
+            this.apparentTemp != b.apparentTemp ||
+            this.cloud != b.cloud ||
+            this.dewPT != b.dewPT ||
+            this.pressure != b.pressure ||
+            this.relativeHumidity != b.relativeHumidity ||
+            this.windDirection != b.windDirection ||
+            this.windSpeedKMH != b.windSpeedKMH ||
+            this.windSpeedKT != b.windSpeedKT
+        ) {
+            return false;
+        }
+        
+        return true;
+    }
+
     // Getters and setters
     public String getId() {
         return id;

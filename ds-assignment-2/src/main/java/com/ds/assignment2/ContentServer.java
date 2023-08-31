@@ -1,12 +1,12 @@
 package com.ds.assignment2;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.concurrent.TimeUnit;
@@ -20,7 +20,7 @@ public class ContentServer {
     public static LamportClock clock = new LamportClock();
     public static String hostname = "localhost";
     public static int port = 4567;
-    public static WeatherData currentWeatherData;
+    public static long fileLastModified;
 
     public static void main(String[] args) {
 
@@ -40,23 +40,9 @@ public class ContentServer {
                 System.out.println(e);
                 return;
             }
-            
-            // System.out.println("New client connected");
-            
+                        
             connectToAggregationServer();
         }
-                
-            
-        // } catch (UnknownHostException ex) {
-        //     System.out.println("Server not found: " + ex.getMessage());
-        // } catch (JsonParseException ex) {
-        //     System.out.println("JSON parsing error: " + ex.getMessage());
-        // } catch (JsonMappingException ex) {
-        //     System.out.println("JSON mapping error: " + ex.getMessage());
-        // } catch (IOException ex) {
-        //     System.out.println("I/O error: " + ex.getMessage());
-        // }
-
     }
 
     public static void connectToAggregationServer() {
@@ -72,10 +58,13 @@ public class ContentServer {
             //Parse data file
             ObjectMapper mapper = new ObjectMapper();
             
+            File dataFile = new File("target/classes/com/ds/assignment2/content-server-input/weather-data1.txt");
             WeatherData weatherData = new WeatherData(clock.getValue(), "target/classes/com/ds/assignment2/content-server-input/weather-data1.txt");
             
-            if (!weatherData.equals(currentWeatherData)) {
-                currentWeatherData = weatherData;
+            if (dataFile.lastModified() != fileLastModified) {
+                weatherData.printData();
+
+                fileLastModified = dataFile.lastModified();
                 
                 String jsonBodyString = mapper.writeValueAsString(weatherData);
                 
