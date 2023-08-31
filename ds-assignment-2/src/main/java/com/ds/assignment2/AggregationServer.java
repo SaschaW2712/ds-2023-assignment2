@@ -66,9 +66,7 @@ public class AggregationServer {
         } else if (request != null && request.startsWith("PUT")) {
             handlePUTRequest(reader, writer);
         } else {
-            String response = "HTTP/1.1 400 Bad Request\r\n\r\nInvalid request!";
-            System.out.println("Sending 400");
-            writer.println(response);
+            handleBadRequest(reader, writer);
         }
     }
 
@@ -144,5 +142,31 @@ public class AggregationServer {
 
         // Respond
         writer.println("HTTP/1.1 200 OK\n" + "Clock-Time: " + clock.getValue() + "\n\n" + "Received JSON: " + parsedJSONString);
+    }
+
+    public static void handleBadRequest(
+        BufferedReader reader,
+        PrintWriter writer
+    ) {
+        try {
+            String line;
+            while (!(line = reader.readLine()).isEmpty()) {
+                if (line.startsWith("Clock-Time:")) {
+                    int getClientClockTime = Integer.parseInt(line.split(":", 2)[1].trim());
+
+                    System.out.println("GET client clock time: " + getClientClockTime);
+                    System.out.println("Server clock time: " + clock.getValue());
+                    clock.updateValue(getClientClockTime);
+
+                    System.out.println("Server updated clock time: " + clock.getValue());
+                }
+            }
+
+            String response = "HTTP/1.1 400 Bad Request\n\nInvalid request!";
+            System.out.println("Sending 400");
+            writer.println(response);
+        } catch (Exception ex) {
+            System.out.println("Error in bad request handler: " + ex.getLocalizedMessage());
+        } 
     }
 }

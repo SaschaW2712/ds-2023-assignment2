@@ -7,7 +7,7 @@ compile: ${JAVAPATH}/AggregationServer.java ${JAVAPATH}/ContentServer.java ${JAV
 	mvn compile
 
 server:
-	mvn exec:java@server -Dexec.args="8080"
+	mvn exec:java@server -Dexec.args="3456"
 
 content:
 	mvn exec:java@content

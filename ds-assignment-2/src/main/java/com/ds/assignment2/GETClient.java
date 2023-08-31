@@ -8,81 +8,97 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.concurrent.TimeUnit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class GETClient {
-
+    
     public static LamportClock clock = new LamportClock();
+    public static int retries = 0;
 
+    public static String hostname = "localhost";
+    public static int port = 3456;
+    
     public static void main(String[] args) {
-        String hostname = "localhost";
-        int port = 8080;
         if (args.length >= 2) {
             hostname = args[0];
             port = Integer.parseInt(args[1]);
         }
- 
-        try (Socket socket = new Socket(hostname, port)) {
- 
+
+        setUpServer();
+    }
+    
+    public static void setUpServer(
+    ) {        
+        try(Socket socket = new Socket(hostname, port);) {
+            
             System.out.println("Connected to server socket");
             InputStream inputStream = socket.getInputStream();
             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
             
             OutputStream outputStream = socket.getOutputStream();
             PrintWriter writer = new PrintWriter(outputStream, true);
- 
-            // Send the GET request
-            writer.println("GET / HTTP/1.1");
-            writer.println("Host: " + hostname);
-            writer.println("Clock-Time: " + clock.getValue());
-            writer.println();
 
-            handleServerResponse(reader);
+            sendServerRequest(writer);
+            
+            handleServerResponse(reader, writer);
+
         } catch (UnknownHostException ex) {
- 
             System.out.println("Server not found: " + ex.getMessage());
- 
         } catch (IOException ex) {
- 
             System.out.println("I/O error: " + ex.getMessage());
         }
     }
 
+    public static void sendServerRequest(
+        PrintWriter writer
+    ) { 
+        // Send the GET request
+        writer.println("GET / HTTP/1.1");
+        writer.println("Host: " + hostname);
+        writer.println("Clock-Time: " + clock.getValue());
+        writer.println();
+    }
+    
+    
     public static void handleServerResponse(
-        BufferedReader reader
+        BufferedReader reader,
+        PrintWriter writer
     ) {
         try {
             System.out.println("Reading from server");
- 
+            
             String headerLine = reader.readLine();
             if (headerLine.startsWith("HTTP/1.1 200 OK")) {
                 handleOKResponse(reader);
-            } else if (headerLine.startsWith("HTTP/1.1 500")) {
-                handle500Response(reader);
+            } else if (headerLine.startsWith("HTTP/1.1 400")) {
+                handle400Response(reader);
+                return;
             } else {
-                handleInvalidServerResponse();
+                handleInvalidServerResponse(reader);
             }
-
-
+            
+            
         } catch(IOException ex) {
             System.out.println("I/O error: " + ex.getMessage());
         }
     }
-
+    
     public static void handleOKResponse(
         BufferedReader reader
     ) throws IOException {
-
+        
         String clockLine = reader.readLine();
         if (clockLine.startsWith("Clock-Time:")) {
             int serverClockTime = Integer.parseInt(clockLine.split(":", 2)[1].trim());
             clock.updateValue(serverClockTime);
         } else {
-            handleInvalidServerResponse();
+            handleInvalidServerResponse(reader);
             return;
         }
-
+        
+        while (!(reader.readLine()).isEmpty()) {}
         ObjectMapper mapper = new ObjectMapper();
         
         WeatherData weatherData;
@@ -91,18 +107,42 @@ public class GETClient {
         
         weatherData.printData();
     }
-
-    public static void handle500Response(
+    
+    public static void handle400Response(
         BufferedReader reader
-    ) {
-        System.out.println("Server returned 500 response");
+    ) throws IOException {
+        System.out.println("Server returned 400 response");
+        
+        retry(reader);
+    }
+    
+    public static void handleInvalidServerResponse(
+        BufferedReader reader
+    ) throws IOException {
+        System.out.println("Server returned invalid response format");
 
-        //TODO: retry after delay
+        retry(reader);
     }
 
-    public static void handleInvalidServerResponse() {
-        System.out.println("Server return invalid response format");
+    public static void retry(
+        BufferedReader reader
+    ) throws IOException {
+        if (retries < 3) {
+            retries++;
+            try {
+                TimeUnit.MILLISECONDS.sleep(5000);
+            } catch(InterruptedException e) {
+                System.out.println("Error: Interrupted");
+                System.out.println(e);
+                return;
+            }
 
-        //TODO: retry after delay
+            while (reader.readLine() != null) {}
+
+            setUpServer();
+        } else {
+            System.out.println("exceeded retries");
+            return;
+        }
     }
 }
