@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class AggregationServer {
 
+    public static LamportClock clock = new LamportClock();
+
     public static void main(String[] args) {
         int port = 8080;
 
@@ -51,6 +53,9 @@ public class AggregationServer {
         BufferedReader reader,
         PrintWriter writer
     ) throws IOException {
+        //Increment clock
+        clock.tick();
+
         // Read the HTTP request from the client
         String request = reader.readLine();
 
@@ -77,7 +82,7 @@ public class AggregationServer {
             String weatherData = mapper.writeValueAsString(mapper.readTree(latestDataFile));
 
             System.out.println(weatherData);
-            String response = "HTTP/1.1 200 OK\n\n" + weatherData;
+            String response = "HTTP/1.1 200 OK\n" + "CLOCK: " + clock.getValue() + "\n\n" + weatherData;
             System.out.println("Sending 200");
 
             // Write the JSON line to the writer
@@ -94,7 +99,10 @@ public class AggregationServer {
     ) throws IOException {
         String line;
         while (!(line = reader.readLine()).isEmpty()) {
-            // Skip headers for now
+            if (line.startsWith("Clock-Time:")) {
+                int contentServerClockTime = Integer.parseInt(line.split(":", 2)[1]);
+                clock.updateValue(contentServerClockTime);
+            }
         }
 
         // Read the JSON body from the request
@@ -116,7 +124,7 @@ public class AggregationServer {
         System.out.println("Sending 200 to PUT client");
 
         // Respond
-        writer.println("HTTP/1.1 200 OK\r\n\r\n" + "Received JSON: " + parsedJSONString);
+        writer.println("HTTP/1.1 200 OK\n" + "CLOCK: " + clock.getValue() + "\n\n" + "Received JSON: " + parsedJSONString);
     }
 
 }
