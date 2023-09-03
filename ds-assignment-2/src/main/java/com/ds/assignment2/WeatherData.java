@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class WeatherData {
     String id;
     int createdAtClockTime;
+    Long createdAtMillis;
     String name;
     String state;
     String timeZone;
@@ -32,6 +33,7 @@ public class WeatherData {
 
     public WeatherData(
         int clockTime,
+        Long createdAtMillis,
         String id,
         String name,
         String state,
@@ -51,6 +53,7 @@ public class WeatherData {
         int windSpeedKT
     ) {
         this.createdAtClockTime = clockTime;
+        this.createdAtMillis = createdAtMillis;
         this.id = id;
         this.name = name;
         this.state =  state;
@@ -70,8 +73,9 @@ public class WeatherData {
         this.windSpeedKT = windSpeedKT;
     }
 
-    public WeatherData(int clockTime, String filePath) {
+    public WeatherData(int clockTime, Long createdAtMillis, String filePath) {
         this.createdAtClockTime = clockTime;
+        this.createdAtMillis = createdAtMillis;
 
         try {
 			BufferedReader reader = new BufferedReader(new FileReader(filePath));
@@ -243,20 +247,28 @@ public class WeatherData {
     }
 
     // Getters and setters
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
     public int getClockTime() {
         return createdAtClockTime;
     }
 
     public void setClockTime(int clockTime) {
         this.createdAtClockTime = clockTime;
+    }
+
+    public Long getCreatedAtMillis() {
+        return createdAtMillis;
+    }
+
+    public void setCreatedAtMillis(Long createdAtMillis) {
+        this.createdAtMillis = createdAtMillis;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 
     public String getName() {

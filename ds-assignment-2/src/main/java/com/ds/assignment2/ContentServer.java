@@ -56,7 +56,7 @@ public class ContentServer {
         
         if (dataFile.lastModified() != fileLastModified) {
             fileLastModified = dataFile.lastModified();
-            WeatherData weatherData = new WeatherData(clock.getValue(), "target/classes/com/ds/assignment2/content-server-input/weather-data1.txt");
+            WeatherData weatherData = new WeatherData(clock.getValue(), System.currentTimeMillis(), "target/classes/com/ds/assignment2/content-server-input/weather-data1.txt");
 
             try (Socket socket = new Socket(hostname, port)) {
                 
