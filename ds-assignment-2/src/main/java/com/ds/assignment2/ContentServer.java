@@ -21,9 +21,9 @@ public class ContentServer {
     public static String hostname = "localhost";
     public static int port = 4567;
     public static long fileLastModified;
-
+    
     public static void main(String[] args) {
-
+        
         if (args.length >= 2) {
             hostname = args[0];
             port = Integer.parseInt(args[1]);
@@ -32,7 +32,8 @@ public class ContentServer {
             return;
         }
         
-        while (true) {
+        int x = 0;
+        while (x < 3) {
             try {
                 TimeUnit.MILLISECONDS.sleep(5000);
             } catch(InterruptedException e) {
@@ -40,51 +41,54 @@ public class ContentServer {
                 System.out.println(e);
                 return;
             }
-                        
+            
             connectToAggregationServer();
+            x++;
         }
+        
+        
     }
-
+    
     public static void connectToAggregationServer() {
-        try (Socket socket = new Socket(hostname, port)) {
-            
-            System.out.println("Connected to server socket");
-            InputStream inputStream = socket.getInputStream();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-            
-            OutputStream outputStream = socket.getOutputStream();
-            PrintWriter writer = new PrintWriter(outputStream, true);
-            
-            //Parse data file
-            ObjectMapper mapper = new ObjectMapper();
-            
-            File dataFile = new File("target/classes/com/ds/assignment2/content-server-input/weather-data1.txt");
+        ObjectMapper mapper = new ObjectMapper();
+        
+        File dataFile = new File("target/classes/com/ds/assignment2/content-server-input/weather-data1.txt");
+        
+        if (dataFile.lastModified() != fileLastModified) {
+            fileLastModified = dataFile.lastModified();
             WeatherData weatherData = new WeatherData(clock.getValue(), "target/classes/com/ds/assignment2/content-server-input/weather-data1.txt");
-            
-            if (dataFile.lastModified() != fileLastModified) {
-                weatherData.printData();
 
-                fileLastModified = dataFile.lastModified();
+            try (Socket socket = new Socket(hostname, port)) {
+                
+                System.out.println("Connected to server socket\n");
+                InputStream inputStream = socket.getInputStream();
+                BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+                
+                OutputStream outputStream = socket.getOutputStream();
+                PrintWriter writer = new PrintWriter(outputStream, true);
+                
+                System.out.println("File has been modified\n");                
                 
                 String jsonBodyString = mapper.writeValueAsString(weatherData);
                 
                 //Send PUT request to aggregation server
+                System.out.println("\nSending Put Request\n");
                 sendPUTRequest(writer, hostname, jsonBodyString);
                 
                 // Shutdown output to signal the end of the request
                 socket.shutdownOutput();
                 
                 handleServerResponse(reader);
-            }
             
-        } catch (UnknownHostException ex) {
-            System.out.println("Server not found: " + ex.getMessage());
-        } catch (JsonParseException ex) {
-            System.out.println("JSON parsing error: " + ex.getMessage());
-        } catch (JsonMappingException ex) {
-            System.out.println("JSON mapping error: " + ex.getMessage());
-        } catch (IOException ex) {
-            System.out.println("I/O error: " + ex.getMessage());
+            } catch (UnknownHostException ex) {
+                System.out.println("Server not found: " + ex.getMessage());
+            } catch (JsonParseException ex) {
+                System.out.println("JSON parsing error: " + ex.getMessage());
+            } catch (JsonMappingException ex) {
+                System.out.println("JSON mapping error: " + ex.getMessage());
+            } catch (IOException ex) {
+                System.out.println("I/O error: " + ex.getMessage());
+            }
         }
     }
     
@@ -103,7 +107,7 @@ public class ContentServer {
     public static void handleServerResponse(BufferedReader reader) {
         try {
             //Read server response
-            System.out.println("Reading from server");
+            System.out.println("\nReading from server\n");
             
             String line;
             while ((line = reader.readLine()) != null) {
