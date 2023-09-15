@@ -12,6 +12,11 @@ import java.util.concurrent.TimeUnit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+enum RequestType {
+    WeatherData,
+    Clock
+}
+
 public class GETClient {
     
     public static LamportClock clock = new LamportClock();
@@ -27,6 +32,7 @@ public class GETClient {
         }
 
         setUpServer();
+        getAndPrintWeatherData();
     }
     
     public static void setUpServer(
@@ -42,15 +48,35 @@ public class GETClient {
 
             //GET and update clock
             sendClockRequest(writer);
-            handleServerResponse(reader, writer);
+            socket.shutdownOutput();
+            handleServerResponse(reader, RequestType.Clock);
 
-            //GET and print weather
-            sendWeatherDataRequest(writer);
-            handleServerResponse(reader, writer);
         } catch (UnknownHostException ex) {
             System.out.println("Server not found: " + ex.getMessage());
         } catch (IOException ex) {
             System.out.println("I/O error: " + ex.getMessage());
+        }
+    }
+
+    public static void getAndPrintWeatherData() {
+        try(Socket socket = new Socket(hostname, port);) {
+            
+            System.out.println("Connected to server socket");
+            InputStream inputStream = socket.getInputStream();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+            
+            OutputStream outputStream = socket.getOutputStream();
+            PrintWriter writer = new PrintWriter(outputStream, true);
+
+            //GET and print weather
+            sendWeatherDataRequest(writer);
+            socket.shutdownOutput();
+            handleServerResponse(reader, RequestType.WeatherData);
+
+        } catch (UnknownHostException ex) {
+            System.out.println("Server not found: " + ex.getMessage());
+        } catch (IOException ex) {
+            System.out.println("I/O error in getAndPrintWeatherData: " + ex.getMessage());
         }
     }
 
@@ -77,14 +103,14 @@ public class GETClient {
     
     public static void handleServerResponse(
         BufferedReader reader,
-        PrintWriter writer
+        RequestType type
     ) {
         try {
             System.out.println("Reading from server");
             
             String headerLine = reader.readLine();
             if (headerLine.startsWith("HTTP/1.1 200 OK")) {
-                handleOKResponse(reader);
+                handleOKResponse(reader, type);
             } else if (headerLine.startsWith("HTTP/1.1 400")) {
                 handle400Response(reader);
                 return;
@@ -99,7 +125,8 @@ public class GETClient {
     }
     
     public static void handleOKResponse(
-        BufferedReader reader
+        BufferedReader reader,
+        RequestType type
     ) throws IOException {
         
         String clockLine = reader.readLine();
@@ -111,16 +138,14 @@ public class GETClient {
             return;
         }
         
-        while (!(reader.readLine()).isEmpty()) {}
+        if (type == RequestType.WeatherData) {
+            while (!(reader.readLine()).isEmpty()) {}
         
-        String nextLine = reader.readLine();
-
-        if (!nextLine.isEmpty()) {
             ObjectMapper mapper = new ObjectMapper();
             
             WeatherData weatherData;
             weatherData = mapper.readValue(reader.readLine(), WeatherData.class);
-            weatherData.setClockTime(clock.getValue());
+            weatherData.setCreatedAtClockTime(clock.getValue());
             
             weatherData.printData();
         }

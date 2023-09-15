@@ -73,7 +73,7 @@ public class WeatherData implements Comparable<WeatherData> {
         this.windSpeedKT = windSpeedKT;
     }
 
-    public WeatherData(int clockTime, Long createdAtMillis, String filePath) {
+    public WeatherData(int clockTime, Long createdAtMillis, String filePath) throws IOException {
         this.createdAtClockTime = clockTime;
         this.createdAtMillis = createdAtMillis;
 
@@ -97,6 +97,7 @@ public class WeatherData implements Comparable<WeatherData> {
 			reader.close();
 		} catch (IOException e) {
 			e.printStackTrace();
+            throw new IOException("Failed to construct WeatherData");
 		}
     }
 
@@ -250,16 +251,16 @@ public class WeatherData implements Comparable<WeatherData> {
 
     @Override
     public int compareTo(WeatherData o) {
-        return this.createdAtMillis.compareTo(o.createdAtMillis);
+        return this.createdAtClockTime - o.createdAtClockTime;
     }
     
     // Getters and setters
-    public int getClockTime() {
+    public int getCreatedAtClockTime() {
         return createdAtClockTime;
     }
 
-    public void setClockTime(int clockTime) {
-        this.createdAtClockTime = clockTime;
+    public void setCreatedAtClockTime(int createdAtClockTime) {
+        this.createdAtClockTime = createdAtClockTime;
     }
 
     public Long getCreatedAtMillis() {

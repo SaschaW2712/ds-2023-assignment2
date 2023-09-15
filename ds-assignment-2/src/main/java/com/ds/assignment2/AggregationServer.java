@@ -16,24 +16,28 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-/* todo:
- *  - Before sending/requesting an update, get clock time from ag server and send it with request
- *  - When ag server receives an update, sort updated entries by clock time before filtering out oldest.
- *  - Finish handling all error codes
- *  - On client startup, restore in-progress requests and get current clock time.
+/* Essential:
+ *  - Finish all response codes
+ *  - Update input formats to match assignment spec
  *  - Handle multiple data entries in one content server file
  *  - Handle missing fields in content server input
  *  - Automated testing
  * 
  * Stretch:
+ *  - On server startup, check and filter old data, and restore in-progress requests
  *  - Implement server replicas
  * 
+ * Open questions:
+ *  - By "update", do they mean a put request, or a weather entry? 
+ *      E.g. if one put request contains 3 recent entries, does that make up 3/20 or just 1/20?
+ *  - Does aggregationserver save the most recent 20 updates per contentserver, or across all contentservers?
  */
 
 public class AggregationServer {
 
     public static LamportClock clock = new LamportClock();
     public static String dataFilePath = "target/classes/com/ds/assignment2/weather-data/";
+    public static boolean initalised = false;
 
     public static void main(String[] args) {
         int port = 4567;
@@ -120,15 +124,16 @@ public class AggregationServer {
             if (type == "weatherdata") {
                 // Process the request and send the appropriate response
                 ObjectMapper mapper = new ObjectMapper();
-                File latestDataFile = new File(dataFilePath + "data");
                 
-                String weatherData = mapper.writeValueAsString(mapper.readTree(latestDataFile));
+                WeatherData data = getLatestWeatherData();
+                String weatherData = mapper.writeValueAsString(data);
 
                 response = response + "\n\n" + weatherData;
             }
 
             System.out.println("Sending 200");
 
+            System.out.println("Response being sent:" + response + "\n\n");
             // Write the JSON line to the writer
             writer.println(response);
             
@@ -164,6 +169,11 @@ public class AggregationServer {
         }
 
         String parsedJSONString = jsonBody.toString();
+        if (parsedJSONString == "") {
+            System.out.println("No content sent, sending 204");
+            writer.println("HTTP/1.1 204 NO-CONTENT\n" + "Clock-Time: " + clock.getValue());
+            return;
+        }
 
         try {
             updateWeatherData(parsedJSONString, receivedAt);
@@ -171,7 +181,7 @@ public class AggregationServer {
             System.out.println("Error updating weather data");
             ex.printStackTrace();
             System.out.println("Sending 500 to PUT client");
-            writer.println("HTTP/1.1 500 INVALID JSON\n" + "Clock-Time: " + clock.getValue() + "\n\n" + "Received JSON: " + parsedJSONString);
+            writer.println("HTTP/1.1 500 INVALID-JSON\n" + "Clock-Time: " + clock.getValue() + "\n\n" + "Received JSON: " + parsedJSONString);
             return;
         }
         
@@ -179,8 +189,11 @@ public class AggregationServer {
         clock.tick();
 
         // Respond
-        System.out.println("Sending 200 to PUT client");
-        writer.println("HTTP/1.1 200 OK\n" + "Clock-Time: " + clock.getValue() + "\n\n" + "Received JSON: " + parsedJSONString);
+        String responseCode = initalised ? "200 OK" : "201 HTTP_CREATED";
+
+        System.out.println("Sending " + responseCode + " to PUT client");
+        writer.println("HTTP/1.1 " + responseCode + "\n" + "Clock-Time: " + clock.getValue() + "\n\n" + "Received JSON: " + parsedJSONString);
+        initalised = true;
     }
 
     public static void handleBadRequest(
@@ -216,16 +229,16 @@ public class AggregationServer {
   *     - Do we need a data class for weatherdata + recency?
   *     - Class for content server id & last communicated timestamp, each time we get a push we check 30secs and delete
   *     old ones
-  *     - Sort by added timestamp and delete older than 20 entries
+  *     - Sort by added CLOCK TIME and delete older than 20 entries
   * Once old content server data removed and older data removed, replace weatherdata array, re-write data file and delete temp file
   * If we fail during this logic ^, on start-up check if we have a temp file and run the update logic again if so
   */
 
-    // public static WeatherData getLatestWeatherData() {
-    //     ArrayList<WeatherData> dataList = getWeatherArrayFromFile();
-
-    //     //TODO: implement
-    // }
+    public static WeatherData getLatestWeatherData(
+    ) {
+        ArrayList<WeatherData> data = getWeatherArrayFromFile();
+        return data.get(0);
+    }
 
     public static void updateWeatherData(
         String newDataString,
@@ -254,13 +267,13 @@ public class AggregationServer {
 
             //TODO: filtering
             //We only keep: last 20, data from content servers active in the last 30 seconds that are still connected
-            data = sortByCreationTime(data);
+            data = sortByCreationClockTime(data);
             System.out.println("Just sorted by creation time");
 
             data = filterInactiveContentServers(data);
             System.out.println("Just filtered by content server inactivity");
 
-            data = filterOldData(data);
+            data = filterLeastRecentData(data);
             System.out.println("Just filtered old data");
 
 
@@ -313,7 +326,7 @@ public class AggregationServer {
         }
     }
 
-    public static ArrayList<WeatherData> sortByCreationTime(
+    public static ArrayList<WeatherData> sortByCreationClockTime(
         ArrayList<WeatherData> weatherData
     ) {
         Collections.sort(weatherData);
@@ -370,7 +383,7 @@ public class AggregationServer {
         }
     }
 
-    public static ArrayList<WeatherData> filterOldData(
+    public static ArrayList<WeatherData> filterLeastRecentData(
         ArrayList<WeatherData> weatherData
     ) {
         while (weatherData.size() > 20) {

@@ -31,7 +31,9 @@ public class ContentServer {
             System.out.println("Invalid args.");
             return;
         }
-        
+
+        getServerClock();
+
         int x = 0;
         while (x < 3) {
             try {
@@ -48,6 +50,36 @@ public class ContentServer {
         
         
     }
+
+    public static void getServerClock() {
+        try (Socket socket = new Socket(hostname, port)) {
+            
+            System.out.println("Connected to server socket\n");
+            InputStream inputStream = socket.getInputStream();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+            
+            OutputStream outputStream = socket.getOutputStream();
+            PrintWriter writer = new PrintWriter(outputStream, true);
+            
+            
+            System.out.println("\nSending Clock Request\n");
+            sendClockRequest(writer);                        
+            
+            // Shutdown output to signal the end of the request
+            socket.shutdownOutput();
+            
+            handleServerResponse(reader);
+        
+        } catch (UnknownHostException ex) {
+            System.out.println("Server not found: " + ex.getMessage());
+        } catch (JsonParseException ex) {
+            System.out.println("JSON parsing error: " + ex.getMessage());
+        } catch (JsonMappingException ex) {
+            System.out.println("JSON mapping error: " + ex.getMessage());
+        } catch (IOException ex) {
+            System.out.println("I/O error: " + ex.getMessage());
+        }    
+    }
     
     public static void connectToAggregationServer() {
         ObjectMapper mapper = new ObjectMapper();
@@ -56,19 +88,16 @@ public class ContentServer {
         
         if (dataFile.lastModified() != fileLastModified) {
             fileLastModified = dataFile.lastModified();
-            WeatherData weatherData = new WeatherData(clock.getValue(), System.currentTimeMillis(), "target/classes/com/ds/assignment2/content-server-input/weather-data1.txt");
 
             try (Socket socket = new Socket(hostname, port)) {
-                
+                WeatherData weatherData = new WeatherData(clock.getValue(), System.currentTimeMillis(), "target/classes/com/ds/assignment2/content-server-input/weather-data1.txt");
+
                 System.out.println("Connected to server socket\n");
                 InputStream inputStream = socket.getInputStream();
                 BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
                 
                 OutputStream outputStream = socket.getOutputStream();
                 PrintWriter writer = new PrintWriter(outputStream, true);
-                
-                sendClockRequest(writer);
-                handleServerResponse(reader);
                 
                 String jsonBodyString = mapper.writeValueAsString(weatherData);
                 
@@ -104,7 +133,6 @@ public class ContentServer {
     }
     
     public static void sendPUTRequest(PrintWriter writer, String hostname, String jsonBodyString) {
-        clock.tick();
         // Send the PUT request
         writer.println("PUT / HTTP/1.1");
         writer.println("Host: " + hostname);
