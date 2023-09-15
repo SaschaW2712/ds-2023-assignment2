@@ -67,7 +67,8 @@ public class ContentServer {
                 OutputStream outputStream = socket.getOutputStream();
                 PrintWriter writer = new PrintWriter(outputStream, true);
                 
-                System.out.println("File has been modified\n");                
+                sendClockRequest(writer);
+                handleServerResponse(reader);
                 
                 String jsonBodyString = mapper.writeValueAsString(weatherData);
                 
@@ -90,6 +91,16 @@ public class ContentServer {
                 System.out.println("I/O error: " + ex.getMessage());
             }
         }
+    }
+
+    public static void sendClockRequest(
+        PrintWriter writer
+    ) { 
+        // Send the GET request
+        writer.println("GET /clock HTTP/1.1");
+        writer.println("Host: " + hostname);
+        writer.println("Clock-Time: " + clock.getValue());
+        writer.println();
     }
     
     public static void sendPUTRequest(PrintWriter writer, String hostname, String jsonBodyString) {

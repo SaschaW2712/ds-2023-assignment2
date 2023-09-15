@@ -2,32 +2,38 @@ package com.ds.assignment2;
 
 import java.io.*;
 import java.net.*;
-import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-/*
- * TODO:
- *      - Server replicas
- *      - Store weather data in a single file
- *      - Handle updating weather data
- *          - Deleting data from content servers that haven't sent PUT in 30 seconds
- *          - Deleting older than last 20 entries
- *      - Send weather data matching client's lamport clock
- *      - PUT requests being inserted in Lamport clock order, not timestamp
- *      - Automated testing
- *      - Invalid requests
- *      - Handling when not all fields are there for weather data
- *      - Handling multiple data pieces in one file (content server)
+/* todo:
+ *  - Before sending/requesting an update, get clock time from ag server and send it with request
+ *  - When ag server receives an update, sort updated entries by clock time before filtering out oldest.
+ *  - Finish handling all error codes
+ *  - On client startup, restore in-progress requests and get current clock time.
+ *  - Handle multiple data entries in one content server file
+ *  - Handle missing fields in content server input
+ *  - Automated testing
+ * 
+ * Stretch:
+ *  - Implement server replicas
+ * 
  */
 
 public class AggregationServer {
 
     public static LamportClock clock = new LamportClock();
+    public static String dataFilePath = "target/classes/com/ds/assignment2/weather-data/";
 
     public static void main(String[] args) {
         int port = 4567;
@@ -72,27 +78,29 @@ public class AggregationServer {
         BufferedReader reader,
         PrintWriter writer
     ) throws IOException {
-        //Increment clock
-        clock.tick();
-
         // Read the HTTP request from the client
         String request = reader.readLine();
 
         System.out.println("Just read client request");
-        if (request != null && request.startsWith("GET")) {
-            handleGETRequest(reader, writer);
-
-        } else if (request != null && request.startsWith("PUT")) {
-            handlePUTRequest(reader, writer);
-
+        if (request != null) {
+            if (request.startsWith("GET /weatherdata")) {
+                handleGETDataRequest(reader, writer, "weatherdata");
+            } else if (request.startsWith("GET /clock")) {
+                handleGETDataRequest(reader, writer, "clock");
+            } else if (request.startsWith("PUT")) {
+                handlePUTRequest(reader, writer);
+            } else {
+                handleBadRequest(reader, writer);
+            }
         } else {
             handleBadRequest(reader, writer);
         }
     }
 
-    private static void handleGETRequest(
+    private static void handleGETDataRequest(
         BufferedReader reader,
-        PrintWriter writer
+        PrintWriter writer,
+        String type
     ) {
         try {
             String line;
@@ -108,13 +116,17 @@ public class AggregationServer {
                 }
             }
 
-            // Process the request and send the appropriate response
-            ObjectMapper mapper = new ObjectMapper();
-            File latestDataFile = new File("target/classes/com/ds/assignment2/weather-data/data");
-            String weatherData = mapper.writeValueAsString(mapper.readTree(latestDataFile));
+            String response = "HTTP/1.1 200 OK\n" + "Clock-Time: " + clock.getValue();
+            if (type == "weatherdata") {
+                // Process the request and send the appropriate response
+                ObjectMapper mapper = new ObjectMapper();
+                File latestDataFile = new File(dataFilePath + "data");
+                
+                String weatherData = mapper.writeValueAsString(mapper.readTree(latestDataFile));
 
-            System.out.println(weatherData);
-            String response = "HTTP/1.1 200 OK\n" + "Clock-Time: " + clock.getValue() + "\n\n" + weatherData;
+                response = response + "\n\n" + weatherData;
+            }
+
             System.out.println("Sending 200");
 
             // Write the JSON line to the writer
@@ -153,11 +165,21 @@ public class AggregationServer {
 
         String parsedJSONString = jsonBody.toString();
 
-        updateWeatherData(parsedJSONString, receivedAt);
-
-        System.out.println("Sending 200 to PUT client");
+        try {
+            updateWeatherData(parsedJSONString, receivedAt);
+        } catch(Exception ex) {
+            System.out.println("Error updating weather data");
+            ex.printStackTrace();
+            System.out.println("Sending 500 to PUT client");
+            writer.println("HTTP/1.1 500 INVALID JSON\n" + "Clock-Time: " + clock.getValue() + "\n\n" + "Received JSON: " + parsedJSONString);
+            return;
+        }
+        
+        //Increment clock for successful data update
+        clock.tick();
 
         // Respond
+        System.out.println("Sending 200 to PUT client");
         writer.println("HTTP/1.1 200 OK\n" + "Clock-Time: " + clock.getValue() + "\n\n" + "Received JSON: " + parsedJSONString);
     }
 
@@ -198,43 +220,163 @@ public class AggregationServer {
   * Once old content server data removed and older data removed, replace weatherdata array, re-write data file and delete temp file
   * If we fail during this logic ^, on start-up check if we have a temp file and run the update logic again if so
   */
-  
+
+    // public static WeatherData getLatestWeatherData() {
+    //     ArrayList<WeatherData> dataList = getWeatherArrayFromFile();
+
+    //     //TODO: implement
+    // }
+
     public static void updateWeatherData(
         String newDataString,
         Long receivedAt
-    ) {
+    ) throws Exception {
         try {
             //Write new string to file immediately
-            BufferedWriter fileWriter = new BufferedWriter(new FileWriter("target/classes/com/ds/assignment2/weather-data/temp"));
+            File tempFile = new File(dataFilePath + "temp");
+            if (!tempFile.exists()) {
+                tempFile.createNewFile();
+            }
+
+            BufferedWriter fileWriter = new BufferedWriter(new FileWriter(dataFilePath + "temp"));
             fileWriter.write(newDataString);
             fileWriter.close();
 
             ObjectMapper mapper = new ObjectMapper();
-            WeatherData data = mapper.readValue(newDataString, WeatherData.class);
+            WeatherData newWeatherData = mapper.readValue(newDataString, WeatherData.class);
+            
 
-            System.out.println("Data in updateWeatherData: ");
-            data.printData();
+            //Get current weather data and add new one to array
+            ArrayList<WeatherData> data = getWeatherArrayFromFile();
+
+            System.out.println("Just got data from file");
+            data.add(newWeatherData);
+
+            //TODO: filtering
             //We only keep: last 20, data from content servers active in the last 30 seconds that are still connected
+            data = sortByCreationTime(data);
+            System.out.println("Just sorted by creation time");
+
+            data = filterInactiveContentServers(data);
+            System.out.println("Just filtered by content server inactivity");
+
+            data = filterOldData(data);
+            System.out.println("Just filtered old data");
+
+
+            //Update data file with updated array
+            writeWeatherArrayToFile(data);
+
+            System.out.println("Just wrote new data to file");
+            tempFile.delete();
+            System.out.println("Just deleted temp file");
 
         } catch(Exception ex) {
             System.out.println("Error updating weather data: " + ex.getLocalizedMessage());
+            throw ex;
         }
     }
     
-    public static void getWeatherArrayFromFile() {
+    public static ArrayList<WeatherData> getWeatherArrayFromFile() {
         ObjectMapper mapper  = new ObjectMapper();
         JsonFactory jsonFactory = new JsonFactory();
-        try(BufferedReader reader = new BufferedReader(new FileReader("luser.txt"))) {
+        try(BufferedReader reader = new BufferedReader(new FileReader(dataFilePath + "data"))) {
             JsonParser parser = jsonFactory.createParser(reader);
-            Iterator<WeatherData> value = mapper.readValues(parser, WeatherData.class);
+            ArrayList<WeatherData> dataArrayList = new ArrayList<WeatherData>();
 
-            value.forEachRemaining((dataObject) -> { 
-                System.out.println(dataObject);
-            });
+            List<WeatherData> dataFromFile = mapper.readValue(parser, new TypeReference<List<WeatherData>>() {});
+            for (WeatherData data : dataFromFile) {
+                dataArrayList.add(data);
+            }
 
+            return dataArrayList;
 
         } catch(Exception ex) {
-            
+            System.out.println("Error in getWeatherArrayFromFile: " + ex.getLocalizedMessage());
+            return new ArrayList<WeatherData>();
         }
+    }
+
+    public static void writeWeatherArrayToFile(ArrayList<WeatherData> weatherDataList) {
+        ObjectMapper mapper = new ObjectMapper();
+        JsonFactory jsonFactory = new JsonFactory();
+
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(dataFilePath + "data"))) {
+            JsonGenerator generator = jsonFactory.createGenerator(writer);
+
+            // Write the updated weatherDataList to the file
+            mapper.writeValue(generator, weatherDataList);
+
+            generator.flush();
+        } catch (Exception ex) {
+            System.out.println("Error in writeWeatherArrayToFile: " + ex.getLocalizedMessage());
+        }
+    }
+
+    public static ArrayList<WeatherData> sortByCreationTime(
+        ArrayList<WeatherData> weatherData
+    ) {
+        Collections.sort(weatherData);
+        return weatherData;
+    }
+
+    public static ArrayList<WeatherData> filterInactiveContentServers(
+        ArrayList<WeatherData> weatherData
+    ) throws Exception {
+        try {
+            Map<String, Long> contentServerIDsWithRecency = getContentServerIDsAndRecency(weatherData);
+
+            //There are 30000 milliseconds in 30 seconds
+            Long millis30SecondsAgo = System.currentTimeMillis() - 30000;
+
+            ArrayList<WeatherData> recentWeatherData = new ArrayList<WeatherData>();
+
+            for (WeatherData data : weatherData) {
+                Long serverLastUpdate = contentServerIDsWithRecency.get(data.getId());
+
+                if (serverLastUpdate >= millis30SecondsAgo) {
+                    recentWeatherData.add(data);
+                }
+            }
+
+            return recentWeatherData;
+        } catch(Exception ex) {
+            System.out.println("Error in filterInactiveContentServers: " + ex);
+            ex.printStackTrace();
+            throw ex;
+        }
+
+    }
+
+    public static Map<String, Long> getContentServerIDsAndRecency(
+        ArrayList<WeatherData> weatherDataList
+    ) throws UnsupportedOperationException {
+        try {
+            Map<String, Long> serverIDsWithLastUpdate = new HashMap<>();
+
+            for (WeatherData data : weatherDataList) {
+                Long lastUpdateForServerID = serverIDsWithLastUpdate.get(data.getId());
+
+                if (lastUpdateForServerID == null || lastUpdateForServerID < data.getCreatedAtMillis()) {
+                    serverIDsWithLastUpdate.put(data.getId(), data.getCreatedAtMillis());
+                }
+            }
+
+            return serverIDsWithLastUpdate;
+        } catch (UnsupportedOperationException ex) {
+            System.out.println("Unsupported operation exception in getContentServerIDsAndRecency");
+            ex.printStackTrace();
+            throw ex;
+        }
+    }
+
+    public static ArrayList<WeatherData> filterOldData(
+        ArrayList<WeatherData> weatherData
+    ) {
+        while (weatherData.size() > 20) {
+                weatherData.remove(0);
+        }
+
+        return weatherData;
     }
 }

@@ -7,7 +7,7 @@ import java.io.IOException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-public class WeatherData {
+public class WeatherData implements Comparable<WeatherData> {
     String id;
     int createdAtClockTime;
     Long createdAtMillis;
@@ -111,6 +111,8 @@ public class WeatherData {
     }
 
     public void printData() {
+        System.out.println("CreatedAt clock time: " + this.createdAtClockTime);
+        System.out.println("CreatedAt millis: " + this.createdAtMillis);
         System.out.println("Content server id: " + this.id);
         System.out.println("Name: " + this.name);
         System.out.println("State: " + this.state);
@@ -246,6 +248,11 @@ public class WeatherData {
         return true;
     }
 
+    @Override
+    public int compareTo(WeatherData o) {
+        return this.createdAtMillis.compareTo(o.createdAtMillis);
+    }
+    
     // Getters and setters
     public int getClockTime() {
         return createdAtClockTime;

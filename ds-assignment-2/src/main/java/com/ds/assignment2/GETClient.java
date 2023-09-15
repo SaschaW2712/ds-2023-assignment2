@@ -40,10 +40,13 @@ public class GETClient {
             OutputStream outputStream = socket.getOutputStream();
             PrintWriter writer = new PrintWriter(outputStream, true);
 
-            sendServerRequest(writer);
-            
+            //GET and update clock
+            sendClockRequest(writer);
             handleServerResponse(reader, writer);
 
+            //GET and print weather
+            sendWeatherDataRequest(writer);
+            handleServerResponse(reader, writer);
         } catch (UnknownHostException ex) {
             System.out.println("Server not found: " + ex.getMessage());
         } catch (IOException ex) {
@@ -51,11 +54,21 @@ public class GETClient {
         }
     }
 
-    public static void sendServerRequest(
+    public static void sendClockRequest(
         PrintWriter writer
     ) { 
         // Send the GET request
-        writer.println("GET / HTTP/1.1");
+        writer.println("GET /clock HTTP/1.1");
+        writer.println("Host: " + hostname);
+        writer.println("Clock-Time: " + clock.getValue());
+        writer.println();
+    }
+
+    public static void sendWeatherDataRequest(
+        PrintWriter writer
+    ) { 
+        // Send the GET request
+        writer.println("GET /weatherdata HTTP/1.1");
         writer.println("Host: " + hostname);
         writer.println("Clock-Time: " + clock.getValue());
         writer.println();
@@ -99,13 +112,18 @@ public class GETClient {
         }
         
         while (!(reader.readLine()).isEmpty()) {}
-        ObjectMapper mapper = new ObjectMapper();
         
-        WeatherData weatherData;
-        weatherData = mapper.readValue(reader.readLine(), WeatherData.class);
-        weatherData.setClockTime(clock.getValue());
-        
-        weatherData.printData();
+        String nextLine = reader.readLine();
+
+        if (!nextLine.isEmpty()) {
+            ObjectMapper mapper = new ObjectMapper();
+            
+            WeatherData weatherData;
+            weatherData = mapper.readValue(reader.readLine(), WeatherData.class);
+            weatherData.setClockTime(clock.getValue());
+            
+            weatherData.printData();
+        }
     }
     
     public static void handle400Response(
