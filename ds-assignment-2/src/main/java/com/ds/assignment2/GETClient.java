@@ -22,13 +22,17 @@ public class GETClient {
     public static LamportClock clock = new LamportClock();
     public static int retries = 0;
 
-    public static String hostname = "localhost";
-    public static int port = 4567;
+    public static String serverName;
+    public static int port;
     
     public static void main(String[] args) {
-        if (args.length >= 2) {
-            hostname = args[0];
-            port = Integer.parseInt(args[1]);
+        if (args.length >= 1) {
+            String[] clientArgs = args[0].split(":");
+            serverName = clientArgs[0];
+            port = Integer.parseInt(clientArgs[1]);
+        } else {
+            System.out.println("Invalid args provided.");
+            return;
         }
 
         setUpServer();
@@ -37,7 +41,7 @@ public class GETClient {
     
     public static void setUpServer(
     ) {        
-        try(Socket socket = new Socket(hostname, port);) {
+        try(Socket socket = new Socket(serverName, port);) {
             
             System.out.println("Connected to server socket");
             InputStream inputStream = socket.getInputStream();
@@ -59,7 +63,7 @@ public class GETClient {
     }
 
     public static void getAndPrintWeatherData() {
-        try(Socket socket = new Socket(hostname, port);) {
+        try(Socket socket = new Socket(serverName, port);) {
             
             System.out.println("Connected to server socket");
             InputStream inputStream = socket.getInputStream();
@@ -85,7 +89,7 @@ public class GETClient {
     ) { 
         // Send the GET request
         writer.println("GET /clock HTTP/1.1");
-        writer.println("Host: " + hostname);
+        writer.println("Host: " + serverName);
         writer.println("Clock-Time: " + clock.getValue());
         writer.println();
     }
@@ -95,7 +99,7 @@ public class GETClient {
     ) { 
         // Send the GET request
         writer.println("GET /weatherdata HTTP/1.1");
-        writer.println("Host: " + hostname);
+        writer.println("Host: " + serverName);
         writer.println("Clock-Time: " + clock.getValue());
         writer.println();
     }

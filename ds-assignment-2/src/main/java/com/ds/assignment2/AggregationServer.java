@@ -12,13 +12,12 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /* Essential:
- *  - Finish all response codes
- *  - Update input formats to match assignment spec
  *  - Handle multiple data entries in one content server file
  *  - Handle missing fields in content server input
  *  - Automated testing
@@ -177,8 +176,8 @@ public class AggregationServer {
 
         try {
             updateWeatherData(parsedJSONString, receivedAt);
-        } catch(Exception ex) {
-            System.out.println("Error updating weather data");
+        } catch(JsonMappingException ex) {
+            System.out.println("Error in weather data JSON");
             ex.printStackTrace();
             System.out.println("Sending 500 to PUT client");
             writer.println("HTTP/1.1 500 INVALID-JSON\n" + "Clock-Time: " + clock.getValue() + "\n\n" + "Received JSON: " + parsedJSONString);
@@ -243,7 +242,7 @@ public class AggregationServer {
     public static void updateWeatherData(
         String newDataString,
         Long receivedAt
-    ) throws Exception {
+    ) throws IOException, JsonMappingException {
         try {
             //Write new string to file immediately
             File tempFile = new File(dataFilePath + "temp");
@@ -265,8 +264,6 @@ public class AggregationServer {
             System.out.println("Just got data from file");
             data.add(newWeatherData);
 
-            //TODO: filtering
-            //We only keep: last 20, data from content servers active in the last 30 seconds that are still connected
             data = sortByCreationClockTime(data);
             System.out.println("Just sorted by creation time");
 
@@ -284,10 +281,13 @@ public class AggregationServer {
             tempFile.delete();
             System.out.println("Just deleted temp file");
 
-        } catch(Exception ex) {
-            System.out.println("Error updating weather data: " + ex.getLocalizedMessage());
+        } catch (JsonProcessingException ex) {
+            System.out.println("JSONMappingException in updateWeatherData: " + ex.getLocalizedMessage());
             throw ex;
-        }
+        } catch (IOException ex) {
+            System.out.println("IOException in updateWeatherData: " + ex.getLocalizedMessage());
+            throw ex;
+        } 
     }
     
     public static ArrayList<WeatherData> getWeatherArrayFromFile() {
@@ -335,8 +335,7 @@ public class AggregationServer {
 
     public static ArrayList<WeatherData> filterInactiveContentServers(
         ArrayList<WeatherData> weatherData
-    ) throws Exception {
-        try {
+    ) {
             Map<String, Long> contentServerIDsWithRecency = getContentServerIDsAndRecency(weatherData);
 
             //There are 30000 milliseconds in 30 seconds
@@ -353,11 +352,6 @@ public class AggregationServer {
             }
 
             return recentWeatherData;
-        } catch(Exception ex) {
-            System.out.println("Error in filterInactiveContentServers: " + ex);
-            ex.printStackTrace();
-            throw ex;
-        }
 
     }
 

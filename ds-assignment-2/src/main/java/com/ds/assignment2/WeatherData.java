@@ -16,7 +16,6 @@ public class WeatherData implements Comparable<WeatherData> {
     String timeZone;
     Double lat;
     Double lon;
-    //TODO: figure out LocalDateTime parsing
     String localDateTimeStamp;
     Long localDateTimeMilliseconds;
     Double airTemp;

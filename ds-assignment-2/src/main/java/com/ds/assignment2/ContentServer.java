@@ -18,15 +18,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class ContentServer {
     
     public static LamportClock clock = new LamportClock();
-    public static String hostname = "localhost";
-    public static int port = 4567;
+    public static String serverName;
+    public static int port;
+    public static String inputFilePath;
     public static long fileLastModified;
     
     public static void main(String[] args) {
         
         if (args.length >= 2) {
-            hostname = args[0];
-            port = Integer.parseInt(args[1]);
+            String[] clientArgs = args[0].split(":");
+            serverName = clientArgs[0];
+            port = Integer.parseInt(clientArgs[1]);
+            inputFilePath = args[1];
         } else {
             System.out.println("Invalid args.");
             return;
@@ -47,12 +50,10 @@ public class ContentServer {
             connectToAggregationServer();
             x++;
         }
-        
-        
     }
 
     public static void getServerClock() {
-        try (Socket socket = new Socket(hostname, port)) {
+        try (Socket socket = new Socket(serverName, port)) {
             
             System.out.println("Connected to server socket\n");
             InputStream inputStream = socket.getInputStream();
@@ -84,13 +85,13 @@ public class ContentServer {
     public static void connectToAggregationServer() {
         ObjectMapper mapper = new ObjectMapper();
         
-        File dataFile = new File("target/classes/com/ds/assignment2/content-server-input/weather-data1.txt");
+        File dataFile = new File(inputFilePath);
         
         if (dataFile.lastModified() != fileLastModified) {
             fileLastModified = dataFile.lastModified();
 
-            try (Socket socket = new Socket(hostname, port)) {
-                WeatherData weatherData = new WeatherData(clock.getValue(), System.currentTimeMillis(), "target/classes/com/ds/assignment2/content-server-input/weather-data1.txt");
+            try (Socket socket = new Socket(serverName, port)) {
+                WeatherData weatherData = new WeatherData(clock.getValue(), System.currentTimeMillis(), inputFilePath);
 
                 System.out.println("Connected to server socket\n");
                 InputStream inputStream = socket.getInputStream();
@@ -103,7 +104,7 @@ public class ContentServer {
                 
                 //Send PUT request to aggregation server
                 System.out.println("\nSending Put Request\n");
-                sendPUTRequest(writer, hostname, jsonBodyString);
+                sendPUTRequest(writer, serverName, jsonBodyString);
                 
                 // Shutdown output to signal the end of the request
                 socket.shutdownOutput();
@@ -127,7 +128,7 @@ public class ContentServer {
     ) { 
         // Send the GET request
         writer.println("GET /clock HTTP/1.1");
-        writer.println("Host: " + hostname);
+        writer.println("Host: " + serverName);
         writer.println("Clock-Time: " + clock.getValue());
         writer.println();
     }
