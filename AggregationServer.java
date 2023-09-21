@@ -31,7 +31,7 @@ import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 public class AggregationServer {
 
     public static LamportClock clock = new LamportClock();
-    public static String dataFilePath = "target/classes/";
+    public static String dataFilePath = "weather-data/";
     public static boolean initalised = false;
 
     public static void main(String[] args) {
