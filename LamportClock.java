@@ -1,4 +1,4 @@
-package com.ds.assignment2;
+
 
 public class LamportClock {
     private int value = 0;

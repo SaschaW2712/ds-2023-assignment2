@@ -1,0 +1,7 @@
+{
+    "java.project.referencedLibraries": [
+        "lib/**/*.jar",
+        "jackson-core-2.12.5.jar",
+        "jackson-databind-2.12.5.jar"
+    ]
+}

@@ -1,4 +1,4 @@
-package com.ds.assignment2;
+
 
 public class AggregationServerManager {
     public static void main(String[] args) {
