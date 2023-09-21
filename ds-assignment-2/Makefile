@@ -10,7 +10,7 @@ server:
 	mvn exec:java@server -Dexec.args="4567"
 
 content:
-	mvn exec:java@content -Dexec.args="localhost:4567 target/classes/com/ds/assignment2/content-server-input/weather-data1.txt"
+	mvn exec:java@content -Dexec.args="localhost:4567 target/classes/weather-data1.txt"
 
 client:
 	mvn exec:java@client -Dexec.args="localhost:4567"

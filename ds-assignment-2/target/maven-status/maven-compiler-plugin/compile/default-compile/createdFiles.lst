@@ -1,1 +1,8 @@
+com/ds/assignment2/WeatherData.class
+com/ds/assignment2/ContentServer.class
+com/ds/assignment2/AggregationServer$1.class
+com/ds/assignment2/LamportClock.class
+com/ds/assignment2/GETClient.class
+com/ds/assignment2/AggregationServerManager.class
+com/ds/assignment2/AggregationServer.class
 com/ds/assignment2/RequestType.class

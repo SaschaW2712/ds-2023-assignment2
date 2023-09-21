@@ -1,9 +1,5 @@
 package com.ds.assignment2;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -28,7 +24,12 @@ public class WeatherData implements Comparable<WeatherData> {
     int windSpeedKMH;
     int windSpeedKT;
 
-    public WeatherData() {}
+    public WeatherData() {};
+    
+    public WeatherData(int clockTime, Long createdAtMillis) {
+        this.createdAtClockTime = clockTime;
+        this.createdAtMillis = createdAtMillis;
+    }
 
     public WeatherData(
         int clockTime,
@@ -72,34 +73,6 @@ public class WeatherData implements Comparable<WeatherData> {
         this.windSpeedKT = windSpeedKT;
     }
 
-    public WeatherData(int clockTime, Long createdAtMillis, String filePath) throws IOException {
-        this.createdAtClockTime = clockTime;
-        this.createdAtMillis = createdAtMillis;
-
-        try {
-			BufferedReader reader = new BufferedReader(new FileReader(filePath));
-			String line = reader.readLine();
-
-			while (line != null) {
-				System.out.println(line);
-				// read next line
-                String[] keyAndValue = line.split(":", 2);
-
-                String key = keyAndValue[0];
-                String value = keyAndValue[1];
-
-                parseInputKeyValuePair(key, value);
-                
-                line = reader.readLine();
-			}
-
-			reader.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-            throw new IOException("Failed to construct WeatherData");
-		}
-    }
-
     public String asJSONString() {
         try {
             ObjectMapper objectMapper = new ObjectMapper();
@@ -132,8 +105,7 @@ public class WeatherData implements Comparable<WeatherData> {
         System.out.println("Wind speed (KT): " + this.windSpeedKT);
     }
 
-    public void parseInputKeyValuePair(String key, String value) {
-        //TODO: validate input
+    public void updateDataFromKeyValuePair(String key, String value) {
         try {
             switch (key) {
             case "id":

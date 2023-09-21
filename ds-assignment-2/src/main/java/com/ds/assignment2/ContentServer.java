@@ -2,6 +2,7 @@ package com.ds.assignment2;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -9,6 +10,7 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
 import com.fasterxml.jackson.core.JsonParseException;
@@ -40,7 +42,7 @@ public class ContentServer {
         int x = 0;
         while (x < 3) {
             try {
-                TimeUnit.MILLISECONDS.sleep(5000);
+                TimeUnit.MILLISECONDS.sleep(1000);
             } catch(InterruptedException e) {
                 System.out.println("Error: Interrupted");
                 System.out.println(e);
@@ -83,42 +85,59 @@ public class ContentServer {
     }
     
     public static void connectToAggregationServer() {
+        System.out.println("Connecting to aggregation server to send data");
         ObjectMapper mapper = new ObjectMapper();
         
         File dataFile = new File(inputFilePath);
-        
+
+
         if (dataFile.lastModified() != fileLastModified) {
             fileLastModified = dataFile.lastModified();
 
-            try (Socket socket = new Socket(serverName, port)) {
-                WeatherData weatherData = new WeatherData(clock.getValue(), System.currentTimeMillis(), inputFilePath);
+            ArrayList<WeatherData> weatherData;
+            try {
+                weatherData = parseInputFile(inputFilePath);
 
-                System.out.println("Connected to server socket\n");
-                InputStream inputStream = socket.getInputStream();
-                BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-                
-                OutputStream outputStream = socket.getOutputStream();
-                PrintWriter writer = new PrintWriter(outputStream, true);
-                
-                String jsonBodyString = mapper.writeValueAsString(weatherData);
-                
-                //Send PUT request to aggregation server
-                System.out.println("\nSending Put Request\n");
-                sendPUTRequest(writer, serverName, jsonBodyString);
-                
-                // Shutdown output to signal the end of the request
-                socket.shutdownOutput();
-                
-                handleServerResponse(reader);
-            
-            } catch (UnknownHostException ex) {
-                System.out.println("Server not found: " + ex.getMessage());
-            } catch (JsonParseException ex) {
-                System.out.println("JSON parsing error: " + ex.getMessage());
-            } catch (JsonMappingException ex) {
-                System.out.println("JSON mapping error: " + ex.getMessage());
+                System.out.println("\n\nWeather data from input file:");
+                for (WeatherData data : weatherData) {
+                    data.printData();
+                }
             } catch (IOException ex) {
-                System.out.println("I/O error: " + ex.getMessage());
+                System.out.println("IOException: " + ex.getLocalizedMessage());
+                return;
+            }
+
+            for (WeatherData data : weatherData) {
+                try (Socket socket = new Socket(serverName, port)) {
+                    System.out.println("Connected to server socket\n");
+
+                    InputStream inputStream = socket.getInputStream();
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+                    
+                    OutputStream outputStream = socket.getOutputStream();
+                    PrintWriter writer = new PrintWriter(outputStream, true);
+                    
+                    String jsonBodyString = mapper.writeValueAsString(data);
+                    System.out.println("JSON to be sent: " + jsonBodyString);
+                    
+                    //Send PUT request to aggregation server
+                    System.out.println("\nSending Put Request\n");
+                    sendPUTRequest(writer, serverName, jsonBodyString);
+                    
+                    // Shutdown output to signal the end of the request
+                    socket.shutdownOutput();
+                    
+                    handleServerResponse(reader);
+                
+                } catch (UnknownHostException ex) {
+                    System.out.println("Server not found: " + ex.getMessage());
+                } catch (JsonParseException ex) {
+                    System.out.println("JSON parsing error: " + ex.getMessage());
+                } catch (JsonMappingException ex) {
+                    System.out.println("JSON mapping error: " + ex.getMessage());
+                } catch (IOException ex) {
+                    System.out.println("I/O error: " + ex.getMessage());
+                }
             }
         }
     }
@@ -160,5 +179,48 @@ public class ContentServer {
         } catch(IOException ex) {
             System.out.println("IOException handling server resonse: " + ex.getLocalizedMessage());
         }
+    }
+
+    public static ArrayList<WeatherData> parseInputFile(
+        String filePathString
+    ) throws IOException {
+        System.out.println("Parsing input file");
+        ArrayList<WeatherData> data = new ArrayList<WeatherData>();
+
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader(filePathString));
+            String line = reader.readLine();
+
+            WeatherData currentData = new WeatherData(clock.getValue(), System.currentTimeMillis());
+
+            while (true) {
+                String[] keyAndValue = line.split(":", 2);
+
+                String key = keyAndValue[0];
+                String value = keyAndValue[1];
+
+                currentData.updateDataFromKeyValuePair(key, value);
+                
+                line = reader.readLine();
+                System.out.println("Line: " + line);
+
+                if (line == null) {
+                    System.out.println("End of file");
+                    data.add(currentData);
+                    break;
+                } else if (line.startsWith("id:")) {
+                    System.out.println("Starting new entry");
+                    data.add(currentData);
+                    currentData = new WeatherData(clock.getValue(), System.currentTimeMillis());
+                }
+            }
+
+            reader.close();
+        } catch (IOException ex) {
+            System.out.println("Error parsing input file: " + ex.getLocalizedMessage());
+            ex.printStackTrace();
+        }
+
+        return data;
     }
 }

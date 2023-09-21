@@ -102,5 +102,13 @@
         </plugin>
       </plugins>
     </pluginManagement>
+    <resources>
+      <resource>
+        <directory>src/main/java/com/ds/assignment2/content-server-input</directory>
+      </resource>
+      <resource>
+        <directory>src/main/java/com/ds/assignment2/weather-data</directory>
+      </resource>
+    </resources>
   </build>
 </project>

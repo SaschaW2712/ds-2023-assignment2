@@ -16,26 +16,23 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 
-/* Essential:
- *  - Handle multiple data entries in one content server file
- *  - Handle missing fields in content server input
- *  - Automated testing
- * 
- * Stretch:
+/* Todo:
  *  - On server startup, check and filter old data, and restore in-progress requests
+ *  - Automated testing
  *  - Implement server replicas
+ *  - Fix up incorrect clock time for subsequent entries in same content server input file
  * 
- * Open questions:
- *  - By "update", do they mean a put request, or a weather entry? 
- *      E.g. if one put request contains 3 recent entries, does that make up 3/20 or just 1/20?
- *  - Does aggregationserver save the most recent 20 updates per contentserver, or across all contentservers?
+ * For draft: Can leave out "on server startup" and "implement server replicas" tasks, and just write our automated
+ * testing plan (don't need to have implemented).
+ * Also write up readme with explanation of how stuff works so far
  */
 
 public class AggregationServer {
 
     public static LamportClock clock = new LamportClock();
-    public static String dataFilePath = "target/classes/com/ds/assignment2/weather-data/";
+    public static String dataFilePath = "target/classes/";
     public static boolean initalised = false;
 
     public static void main(String[] args) {
@@ -257,7 +254,6 @@ public class AggregationServer {
             ObjectMapper mapper = new ObjectMapper();
             WeatherData newWeatherData = mapper.readValue(newDataString, WeatherData.class);
             
-
             //Get current weather data and add new one to array
             ArrayList<WeatherData> data = getWeatherArrayFromFile();
 
@@ -297,15 +293,20 @@ public class AggregationServer {
             JsonParser parser = jsonFactory.createParser(reader);
             ArrayList<WeatherData> dataArrayList = new ArrayList<WeatherData>();
 
-            List<WeatherData> dataFromFile = mapper.readValue(parser, new TypeReference<List<WeatherData>>() {});
-            for (WeatherData data : dataFromFile) {
-                dataArrayList.add(data);
+            try {
+                List<WeatherData> dataFromFile = mapper.readValue(parser, new TypeReference<List<WeatherData>>() {});
+                for (WeatherData data : dataFromFile) {
+                    dataArrayList.add(data);
+                }
+            } catch (MismatchedInputException ex) {
+                System.out.println("No data yet");
             }
 
             return dataArrayList;
 
         } catch(Exception ex) {
             System.out.println("Error in getWeatherArrayFromFile: " + ex.getLocalizedMessage());
+            ex.printStackTrace();
             return new ArrayList<WeatherData>();
         }
     }
@@ -336,8 +337,9 @@ public class AggregationServer {
     public static ArrayList<WeatherData> filterInactiveContentServers(
         ArrayList<WeatherData> weatherData
     ) {
-            Map<String, Long> contentServerIDsWithRecency = getContentServerIDsAndRecency(weatherData);
 
+            Map<String, Long> contentServerIDsWithRecency = getContentServerIDsAndRecency(weatherData);
+            
             //There are 30000 milliseconds in 30 seconds
             Long millis30SecondsAgo = System.currentTimeMillis() - 30000;
 

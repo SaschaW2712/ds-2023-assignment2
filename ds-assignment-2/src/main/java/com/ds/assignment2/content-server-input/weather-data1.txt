@@ -15,3 +15,7 @@ rel_hum:78
 wind_dir:E
 wind_spd_kmh:12
 wind_spd_kt:3
+id:IDS60902
+name:Cool Town
+state:SA
+wind_spd_kmh:14
