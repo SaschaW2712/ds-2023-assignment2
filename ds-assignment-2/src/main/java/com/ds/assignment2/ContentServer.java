@@ -108,6 +108,10 @@ public class ContentServer {
             }
 
             for (WeatherData data : weatherData) {
+
+                //Update data with new clock time in case a previous request updated the content server's clock
+                data.setSentClockTime(clock.getValue());
+
                 try (Socket socket = new Socket(serverName, port)) {
                     System.out.println("Connected to server socket\n");
 

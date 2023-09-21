@@ -41,6 +41,8 @@ public class AggregationServer {
         if (args.length >= 1) {
             port = Integer.parseInt(args[0]);
         }
+
+        recoverIfNeeded();
  
         try (ServerSocket serverSocket = new ServerSocket(port)) {
  
@@ -122,6 +124,11 @@ public class AggregationServer {
                 ObjectMapper mapper = new ObjectMapper();
                 
                 WeatherData data = getLatestWeatherData();
+
+                if (data == null) {
+                    System.out.println("No data found, sending 404");
+                    writer.println("HTTP/1.1 404 NOT-FOUND\n + Clock-Time: " + clock.getValue());
+                }
                 String weatherData = mapper.writeValueAsString(data);
 
                 response = response + "\n\n" + weatherData;
@@ -233,7 +240,7 @@ public class AggregationServer {
     public static WeatherData getLatestWeatherData(
     ) {
         ArrayList<WeatherData> data = getWeatherArrayFromFile();
-        return data.get(0);
+        return data.get(data.size() - 1);
     }
 
     public static void updateWeatherData(
@@ -260,20 +267,13 @@ public class AggregationServer {
             System.out.println("Just got data from file");
             data.add(newWeatherData);
 
-            data = sortByCreationClockTime(data);
-            System.out.println("Just sorted by creation time");
-
-            data = filterInactiveContentServers(data);
-            System.out.println("Just filtered by content server inactivity");
-
-            data = filterLeastRecentData(data);
-            System.out.println("Just filtered old data");
-
-
             //Update data file with updated array
             writeWeatherArrayToFile(data);
-
             System.out.println("Just wrote new data to file");
+
+            //Filter and sort updated data file
+            refreshDataFile();
+
             tempFile.delete();
             System.out.println("Just deleted temp file");
 
@@ -387,5 +387,53 @@ public class AggregationServer {
         }
 
         return weatherData;
+    }
+
+    public static void refreshDataFile(
+    ) {
+        ArrayList<WeatherData> data = getWeatherArrayFromFile();
+
+        data = sortByCreationClockTime(data);
+        System.out.println("Just sorted by creation time");
+
+        data = filterInactiveContentServers(data);
+        System.out.println("Just filtered by content server inactivity");
+
+        data = filterLeastRecentData(data);
+        System.out.println("Just filtered old data");
+
+        //Update data file with updated array
+        writeWeatherArrayToFile(data);
+    }
+
+    public static void recoverIfNeeded() {
+        try {
+            //Check if temporary processing file exists, indicating we stopped midway through processing data
+            File temporaryDataFile = new File(dataFilePath + "temp");
+            if (temporaryDataFile.exists()) {
+                BufferedReader reader = new BufferedReader(new FileReader(temporaryDataFile));
+
+                ArrayList<WeatherData> existingData = getWeatherArrayFromFile();
+
+                String unprocessedJSONString = reader.readLine();
+                reader.close();
+
+                if (unprocessedJSONString != null) {
+                    ObjectMapper mapper = new ObjectMapper();
+                    WeatherData newWeatherData = mapper.readValue(unprocessedJSONString, WeatherData.class);
+
+                    existingData.add(newWeatherData);
+                    writeWeatherArrayToFile(existingData);
+
+                    //Filter and sort with new data
+                    refreshDataFile();
+                }
+            }
+
+            temporaryDataFile.delete();
+        } catch (Exception ex) {
+            System.out.println("Exception in recovery: " + ex.getLocalizedMessage());
+            ex.printStackTrace();
+        }
     }
 }

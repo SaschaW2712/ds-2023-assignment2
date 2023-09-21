@@ -149,7 +149,7 @@ public class GETClient {
             
             WeatherData weatherData;
             weatherData = mapper.readValue(reader.readLine(), WeatherData.class);
-            weatherData.setCreatedAtClockTime(clock.getValue());
+            weatherData.setSentClockTime(clock.getValue());
             
             weatherData.printData();
         }

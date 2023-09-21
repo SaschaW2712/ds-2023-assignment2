@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class WeatherData implements Comparable<WeatherData> {
     String id;
-    int createdAtClockTime;
+    int sentClockTime;
     Long createdAtMillis;
     String name;
     String state;
@@ -27,7 +27,7 @@ public class WeatherData implements Comparable<WeatherData> {
     public WeatherData() {};
     
     public WeatherData(int clockTime, Long createdAtMillis) {
-        this.createdAtClockTime = clockTime;
+        this.sentClockTime = clockTime;
         this.createdAtMillis = createdAtMillis;
     }
 
@@ -52,7 +52,7 @@ public class WeatherData implements Comparable<WeatherData> {
         int windSpeedKMH,
         int windSpeedKT
     ) {
-        this.createdAtClockTime = clockTime;
+        this.sentClockTime = clockTime;
         this.createdAtMillis = createdAtMillis;
         this.id = id;
         this.name = name;
@@ -84,7 +84,7 @@ public class WeatherData implements Comparable<WeatherData> {
     }
 
     public void printData() {
-        System.out.println("CreatedAt clock time: " + this.createdAtClockTime);
+        System.out.println("Sent at clock time: " + this.sentClockTime);
         System.out.println("CreatedAt millis: " + this.createdAtMillis);
         System.out.println("Content server id: " + this.id);
         System.out.println("Name: " + this.name);
@@ -222,16 +222,16 @@ public class WeatherData implements Comparable<WeatherData> {
 
     @Override
     public int compareTo(WeatherData o) {
-        return this.createdAtClockTime - o.createdAtClockTime;
+        return this.sentClockTime - o.sentClockTime;
     }
     
     // Getters and setters
-    public int getCreatedAtClockTime() {
-        return createdAtClockTime;
+    public int getSentClockTime() {
+        return sentClockTime;
     }
 
-    public void setCreatedAtClockTime(int createdAtClockTime) {
-        this.createdAtClockTime = createdAtClockTime;
+    public void setSentClockTime(int sentClockTime) {
+        this.sentClockTime = sentClockTime;
     }
 
     public Long getCreatedAtMillis() {
