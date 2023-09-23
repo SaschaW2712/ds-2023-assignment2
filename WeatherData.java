@@ -11,7 +11,7 @@ public class WeatherData implements Comparable<WeatherData> {
     String state;
     String timeZone;
     Double lat;
-    Double lon;
+    Double lon; 
     String localDateTimeStamp;
     Long localDateTimeMilliseconds;
     Double airTemp;
@@ -84,8 +84,8 @@ public class WeatherData implements Comparable<WeatherData> {
     }
 
     public void printData() {
-        System.out.println("Sent at clock time: " + this.sentClockTime);
-        System.out.println("CreatedAt millis: " + this.createdAtMillis);
+        // System.out.println("Sent at clock time: " + this.sentClockTime);
+        // System.out.println("CreatedAt millis: " + this.createdAtMillis);
         System.out.println("Content server id: " + this.id);
         System.out.println("Name: " + this.name);
         System.out.println("State: " + this.state);
@@ -93,7 +93,7 @@ public class WeatherData implements Comparable<WeatherData> {
         System.out.println("Latitude: " + this.lat);
         System.out.println("Longitude: " + this.lon);
         System.out.println("Local date & time: " + this.localDateTimeStamp);
-        System.out.println("Local data & time (long): " + this.localDateTimeMilliseconds);
+        System.out.println("Local date & time (long): " + this.localDateTimeMilliseconds);
         System.out.println("Air temperature: " + this.airTemp);
         System.out.println("Apparent temperature: " + this.apparentTemp);
         System.out.println("Cloud: " + this.cloud);

@@ -17,17 +17,6 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 
-/* Todo:
- *  - On server startup, check and filter old data, and restore in-progress requests
- *  - Automated testing
- *  - Implement server replicas
- *  - Fix up incorrect clock time for subsequent entries in same content server input file
- * 
- * For draft: Can leave out "on server startup" and "implement server replicas" tasks, and just write our automated
- * testing plan (don't need to have implemented).
- * Also write up readme with explanation of how stuff works so far
- */
-
 public class AggregationServer {
 
     public static LamportClock clock = new LamportClock();
@@ -82,7 +71,7 @@ public class AggregationServer {
         // Read the HTTP request from the client
         String request = reader.readLine();
 
-        System.out.println("Just read client request");
+        // System.out.println("Just read client request");
         if (request != null) {
             if (request.startsWith("GET /weatherdata")) {
                 handleGETDataRequest(reader, writer, "weatherdata");
@@ -109,11 +98,11 @@ public class AggregationServer {
                 if (line.startsWith("Clock-Time:")) {
                     int getClientClockTime = Integer.parseInt(line.split(":", 2)[1].trim());
 
-                    System.out.println("GET client clock time: " + getClientClockTime);
-                    System.out.println("Server clock time: " + clock.getValue());
+                    // System.out.println("GET client clock time: " + getClientClockTime);
+                    // System.out.println("Server clock time: " + clock.getValue());
                     clock.updateValue(getClientClockTime);
 
-                    System.out.println("Server updated clock time: " + clock.getValue());
+                    // System.out.println("Server updated clock time: " + clock.getValue());
                 }
             }
 
@@ -153,18 +142,16 @@ public class AggregationServer {
             if (line.startsWith("Clock-Time:")) {
                 int contentServerClockTime = Integer.parseInt(line.split(":", 2)[1].trim());
 
-                System.out.println("PUT client's clock time: " + contentServerClockTime);
-                System.out.println("Server clock time: " + clock.getValue());
+                // System.out.println("PUT client's clock time: " + contentServerClockTime);
+                // System.out.println("Server clock time: " + clock.getValue());
                 
                 clock.updateValue(contentServerClockTime);
-                System.out.println("Server updated clock time: " + clock.getValue());
+                // System.out.println("Server updated clock time: " + clock.getValue());
             }
         }
 
         // Read the JSON body from the request
         StringBuilder jsonBody = new StringBuilder();
-
-        Long receivedAt = System.currentTimeMillis();
 
         while ((line = reader.readLine()) != null) {
             jsonBody.append(line);
@@ -178,7 +165,7 @@ public class AggregationServer {
         }
 
         try {
-            updateWeatherData(parsedJSONString, receivedAt);
+            updateWeatherData(parsedJSONString);
         } catch(JsonMappingException ex) {
             System.out.println("Error in weather data JSON");
             ex.printStackTrace();
@@ -194,7 +181,7 @@ public class AggregationServer {
         String responseCode = initalised ? "200 OK" : "201 HTTP_CREATED";
 
         System.out.println("Sending " + responseCode + " to PUT client");
-        writer.println("HTTP/1.1 " + responseCode + "\n" + "Clock-Time: " + clock.getValue() + "\n\n" + "Received JSON: " + parsedJSONString);
+        writer.println("HTTP/1.1 " + responseCode + "\n" + "Clock-Time: " + clock.getValue());
         initalised = true;
     }
 
@@ -208,11 +195,11 @@ public class AggregationServer {
                 if (line.startsWith("Clock-Time:")) {
                     int getClientClockTime = Integer.parseInt(line.split(":", 2)[1].trim());
 
-                    System.out.println("GET client clock time: " + getClientClockTime);
-                    System.out.println("Server clock time: " + clock.getValue());
+                    // System.out.println("GET client clock time: " + getClientClockTime);
+                    // System.out.println("Server clock time: " + clock.getValue());
                     clock.updateValue(getClientClockTime);
 
-                    System.out.println("Server updated clock time: " + clock.getValue());
+                    // System.out.println("Server updated clock time: " + clock.getValue());
                 }
             }
 
@@ -224,18 +211,6 @@ public class AggregationServer {
         } 
     }
 
-
- /*
-  * Immediately write to temp file
-  * Read all entries from current data file and sort by recency added
-  *     - Do we need a data class for weatherdata + recency?
-  *     - Class for content server id & last communicated timestamp, each time we get a push we check 30secs and delete
-  *     old ones
-  *     - Sort by added CLOCK TIME and delete older than 20 entries
-  * Once old content server data removed and older data removed, replace weatherdata array, re-write data file and delete temp file
-  * If we fail during this logic ^, on start-up check if we have a temp file and run the update logic again if so
-  */
-
     public static WeatherData getLatestWeatherData(
     ) {
         ArrayList<WeatherData> data = getWeatherArrayFromFile();
@@ -243,8 +218,7 @@ public class AggregationServer {
     }
 
     public static void updateWeatherData(
-        String newDataString,
-        Long receivedAt
+        String newDataString
     ) throws IOException, JsonMappingException {
         try {
             //Write new string to file immediately
@@ -263,18 +237,18 @@ public class AggregationServer {
             //Get current weather data and add new one to array
             ArrayList<WeatherData> data = getWeatherArrayFromFile();
 
-            System.out.println("Just got data from file");
+            // System.out.println("Just got data from file");
             data.add(newWeatherData);
 
             //Update data file with updated array
             writeWeatherArrayToFile(data);
-            System.out.println("Just wrote new data to file");
+            // System.out.println("Just wrote new data to file");
 
             //Filter and sort updated data file
             refreshDataFile();
 
             tempFile.delete();
-            System.out.println("Just deleted temp file");
+            // System.out.println("Just deleted temp file");
 
         } catch (JsonProcessingException ex) {
             System.out.println("JSONMappingException in updateWeatherData: " + ex.getLocalizedMessage());
@@ -393,13 +367,13 @@ public class AggregationServer {
         ArrayList<WeatherData> data = getWeatherArrayFromFile();
 
         data = sortByCreationClockTime(data);
-        System.out.println("Just sorted by creation time");
+        // System.out.println("Just sorted by creation time");
 
         data = filterInactiveContentServers(data);
-        System.out.println("Just filtered by content server inactivity");
+        // System.out.println("Just filtered by content server inactivity");
 
         data = filterLeastRecentData(data);
-        System.out.println("Just filtered old data");
+        // System.out.println("Just filtered old data");
 
         //Update data file with updated array
         writeWeatherArrayToFile(data);

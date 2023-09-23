@@ -85,7 +85,6 @@ public class ContentServer {
     }
     
     public static void connectToAggregationServer() {
-        System.out.println("Connecting to aggregation server to send data");
         ObjectMapper mapper = new ObjectMapper();
         
         File dataFile = new File(inputFilePath);
@@ -98,10 +97,10 @@ public class ContentServer {
             try {
                 weatherData = parseInputFile(inputFilePath);
 
-                System.out.println("\n\nWeather data from input file:");
-                for (WeatherData data : weatherData) {
-                    data.printData();
-                }
+                // System.out.println("\n\nWeather data from input file:");
+                // for (WeatherData data : weatherData) {
+                //     data.printData();
+                // }
             } catch (IOException ex) {
                 System.out.println("IOException: " + ex.getLocalizedMessage());
                 return;
@@ -113,7 +112,7 @@ public class ContentServer {
                 data.setSentClockTime(clock.getValue());
 
                 try (Socket socket = new Socket(serverName, port)) {
-                    System.out.println("Connected to server socket\n");
+                    System.out.println("\nConnected to server socket\n");
 
                     InputStream inputStream = socket.getInputStream();
                     BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
@@ -170,7 +169,7 @@ public class ContentServer {
     public static void handleServerResponse(BufferedReader reader) {
         try {
             //Read server response
-            System.out.println("\nReading from server\n");
+            System.out.println("\nResponse from server:");
             
             String line;
             while ((line = reader.readLine()) != null) {
@@ -188,7 +187,6 @@ public class ContentServer {
     public static ArrayList<WeatherData> parseInputFile(
         String filePathString
     ) throws IOException {
-        System.out.println("Parsing input file");
         ArrayList<WeatherData> data = new ArrayList<WeatherData>();
 
         try {
@@ -206,14 +204,13 @@ public class ContentServer {
                 currentData.updateDataFromKeyValuePair(key, value);
                 
                 line = reader.readLine();
-                System.out.println("Line: " + line);
 
                 if (line == null) {
-                    System.out.println("End of file");
+                    // System.out.println("End of file");
                     data.add(currentData);
                     break;
                 } else if (line.startsWith("id:")) {
-                    System.out.println("Starting new entry");
+                    // System.out.println("Starting new entry");
                     data.add(currentData);
                     currentData = new WeatherData(clock.getValue(), System.currentTimeMillis());
                 }

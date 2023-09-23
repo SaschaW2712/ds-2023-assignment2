@@ -43,7 +43,7 @@ public class GETClient {
     ) {        
         try(Socket socket = new Socket(serverName, port);) {
             
-            System.out.println("Connected to server socket");
+            // System.out.println("Connected to server socket");
             InputStream inputStream = socket.getInputStream();
             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
             
@@ -110,7 +110,7 @@ public class GETClient {
         RequestType type
     ) {
         try {
-            System.out.println("Reading from server");
+            // System.out.println("Reading from server");
             
             String headerLine = reader.readLine();
             if (headerLine.startsWith("HTTP/1.1 200 OK")) {
