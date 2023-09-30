@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
@@ -33,6 +34,7 @@ public class AggregationServer {
         }
 
         recoverIfNeeded();
+        refreshDataFile();
  
         try {
             serverSocket = new ServerSocket(port);
@@ -96,15 +98,11 @@ public class AggregationServer {
     ) {
         try {
             String line;
+
             while (!(line = reader.readLine()).isEmpty()) {
                 if (line.startsWith("Clock-Time:")) {
                     int getClientClockTime = Integer.parseInt(line.split(":", 2)[1].trim());
-
-                    // System.out.println("GET client clock time: " + getClientClockTime);
-                    // System.out.println("Server clock time: " + clock.getValue());
                     clock.updateValue(getClientClockTime);
-
-                    // System.out.println("Server updated clock time: " + clock.getValue());
                 }
             }
 
@@ -113,14 +111,15 @@ public class AggregationServer {
                 // Process the request and send the appropriate response
                 ObjectMapper mapper = new ObjectMapper();
                 
-                WeatherData data = getLatestWeatherData();
+                Optional<WeatherData> data = getLatestWeatherData();
 
-                if (data == null) {
+                if (!data.isPresent()) {
                     System.out.println("No data found, sending 404");
                     writer.println("HTTP/1.1 404 NOT-FOUND\n + Clock-Time: " + clock.getValue());
+                    return;
                 }
-                String weatherData = mapper.writeValueAsString(data);
 
+                String weatherData = mapper.writeValueAsString(data.get());
                 response = response + "\n\n" + weatherData;
             }
 
@@ -132,6 +131,7 @@ public class AggregationServer {
             
         } catch (Exception ex) {
             System.out.println("Error in GET request handler: " + ex.getLocalizedMessage());
+            ex.printStackTrace();
         }
     }
  
@@ -167,7 +167,7 @@ public class AggregationServer {
         }
 
         try {
-            updateWeatherData(parsedJSONString);
+            updateWithNewWeatherData(parsedJSONString);
         } catch(JsonMappingException ex) {
             System.out.println("Error in weather data JSON");
             ex.printStackTrace();
@@ -213,13 +213,18 @@ public class AggregationServer {
         } 
     }
 
-    public static WeatherData getLatestWeatherData(
+    public static Optional<WeatherData> getLatestWeatherData(
     ) {
+        refreshDataFile();
         ArrayList<WeatherData> data = getWeatherArrayFromFile();
-        return data.get(data.size() - 1);
+        if (data.size() > 0) {
+            return Optional.of(data.get(data.size() - 1));
+        } else {
+            return Optional.empty();
+        }
     }
 
-    public static void updateWeatherData(
+    public static void updateWithNewWeatherData(
         String newDataString
     ) throws IOException, JsonMappingException {
         try {
@@ -312,18 +317,17 @@ public class AggregationServer {
     public static ArrayList<WeatherData> filterInactiveContentServers(
         ArrayList<WeatherData> weatherData
     ) {
-
             Map<String, Long> contentServerIDsWithRecency = getContentServerIDsAndRecency(weatherData);
             
             //There are 30000 milliseconds in 30 seconds
             Long millis30SecondsAgo = System.currentTimeMillis() - 30000;
-
+            
             ArrayList<WeatherData> recentWeatherData = new ArrayList<WeatherData>();
 
             for (WeatherData data : weatherData) {
                 Long serverLastUpdate = contentServerIDsWithRecency.get(data.getId());
 
-                if (serverLastUpdate >= millis30SecondsAgo) {
+                if (serverLastUpdate == null || serverLastUpdate >= millis30SecondsAgo) {
                     recentWeatherData.add(data);
                 }
             }
@@ -366,6 +370,7 @@ public class AggregationServer {
 
     public static void refreshDataFile(
     ) {
+        System.out.println("Refreshing data");
         ArrayList<WeatherData> data = getWeatherArrayFromFile();
 
         data = sortByCreationClockTime(data);

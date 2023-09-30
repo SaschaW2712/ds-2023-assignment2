@@ -24,6 +24,10 @@ public class ContentServer {
     public static int port;
     public static String inputFilePath;
     public static long fileLastModified;
+
+    public static ArrayList<WeatherData> weatherData;
+
+    public static int retries = 0;
     
     public static void main(String[] args) {
         
@@ -37,21 +41,11 @@ public class ContentServer {
             return;
         }
 
+        //Get initial server clock
         getServerClock();
 
-        int x = 0;
-        while (x < 3) {
-            try {
-                TimeUnit.MILLISECONDS.sleep(1000);
-            } catch(InterruptedException e) {
-                System.out.println("Error: Interrupted");
-                System.out.println(e);
-                return;
-            }
-            
-            connectToAggregationServer();
-            x++;
-        }
+        updateWeatherDataIfChanged();
+        sendAllWeatherDataToServer();
     }
 
     public static void getServerClock() {
@@ -66,7 +60,7 @@ public class ContentServer {
             
             
             System.out.println("\nSending Clock Request\n");
-            sendClockRequest(writer);                        
+            writeClockRequest(writer);                        
             
             // Shutdown output to signal the end of the request
             socket.shutdownOutput();
@@ -84,68 +78,64 @@ public class ContentServer {
         }    
     }
     
-    public static void connectToAggregationServer() {
-        ObjectMapper mapper = new ObjectMapper();
-        
+    public static void updateWeatherDataIfChanged() {
         File dataFile = new File(inputFilePath);
-
 
         if (dataFile.lastModified() != fileLastModified) {
             fileLastModified = dataFile.lastModified();
 
-            ArrayList<WeatherData> weatherData;
             try {
                 weatherData = parseInputFile(inputFilePath);
-
-                // System.out.println("\n\nWeather data from input file:");
-                // for (WeatherData data : weatherData) {
-                //     data.printData();
-                // }
             } catch (IOException ex) {
                 System.out.println("IOException: " + ex.getLocalizedMessage());
-                return;
-            }
-
-            for (WeatherData data : weatherData) {
-
-                //Update data with new clock time in case a previous request updated the content server's clock
-                data.setClockTime(clock.getValue());
-
-                try (Socket socket = new Socket(serverName, port)) {
-                    System.out.println("\nConnected to server socket\n");
-
-                    InputStream inputStream = socket.getInputStream();
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-                    
-                    OutputStream outputStream = socket.getOutputStream();
-                    PrintWriter writer = new PrintWriter(outputStream, true);
-                    
-                    String jsonBodyString = mapper.writeValueAsString(data);
-                    System.out.println("JSON to be sent: " + jsonBodyString);
-                    
-                    //Send PUT request to aggregation server
-                    System.out.println("\nSending Put Request\n");
-                    sendPUTRequest(writer, serverName, jsonBodyString);
-                    
-                    // Shutdown output to signal the end of the request
-                    socket.shutdownOutput();
-                    
-                    handleServerResponse(reader);
-                
-                } catch (UnknownHostException ex) {
-                    System.out.println("Server not found: " + ex.getMessage());
-                } catch (JsonParseException ex) {
-                    System.out.println("JSON parsing error: " + ex.getMessage());
-                } catch (JsonMappingException ex) {
-                    System.out.println("JSON mapping error: " + ex.getMessage());
-                } catch (IOException ex) {
-                    System.out.println("I/O error: " + ex.getMessage());
-                }
             }
         }
     }
 
-    public static void sendClockRequest(
+    public static void sendAllWeatherDataToServer() {
+        for (WeatherData data : weatherData) {
+            //Update data with new clock time in case a previous request updated the content server's clock
+            data.setClockTime(clock.getValue());
+            sendSingleWeatherDataToServer(data);
+        }
+    }
+
+    public static void sendSingleWeatherDataToServer(
+        WeatherData data
+    ) {
+        try (Socket socket = new Socket(serverName, port)) {
+            System.out.println("\nConnected to server socket\n");
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            PrintWriter writer = new PrintWriter(socket.getOutputStream(), true);
+            
+            ObjectMapper mapper = new ObjectMapper();
+
+            String jsonBodyString = mapper.writeValueAsString(data);
+            
+            //Send PUT request to aggregation server
+            System.out.println("\nSending Put Request\n");
+            writeDataPUTRequest(writer, serverName, jsonBodyString);
+            
+            socket.shutdownOutput();
+            handleServerResponse(reader);
+        
+        } catch (UnknownHostException ex) {
+            System.out.println("Server not found: " + ex.getMessage());
+            retryOnError();
+        } catch (JsonParseException ex) {
+            System.out.println("JSON parsing error: " + ex.getMessage());
+            retryOnError();
+        } catch (JsonMappingException ex) {
+            System.out.println("JSON mapping error: " + ex.getMessage());
+            retryOnError();
+        } catch (IOException ex) {
+            System.out.println("I/O error: " + ex.getMessage());
+            retryOnError();
+        }
+    }
+
+    public static void writeClockRequest(
         PrintWriter writer
     ) { 
         // Send the GET request
@@ -155,7 +145,7 @@ public class ContentServer {
         writer.println();
     }
     
-    public static void sendPUTRequest(PrintWriter writer, String hostname, String jsonBodyString) {
+    public static void writeDataPUTRequest(PrintWriter writer, String hostname, String jsonBodyString) {
         // Send the PUT request
         writer.println("PUT / HTTP/1.1");
         writer.println("Host: " + hostname);
@@ -173,6 +163,8 @@ public class ContentServer {
             
             String line;
             while ((line = reader.readLine()) != null) {
+
+                //Update lamport clock from server
                 if (line.startsWith("Clock-Time: ")) {
                     String clockLine = line.split(":")[1].trim();
                     clock.updateValue(Integer.parseInt(clockLine));
@@ -181,6 +173,29 @@ public class ContentServer {
             }
         } catch(IOException ex) {
             System.out.println("IOException handling server resonse: " + ex.getLocalizedMessage());
+            retryOnError();
+        }
+    }
+
+    public static void retryOnError() {
+        //Client will retry connection & PUT request up to three times
+        if (retries < 3) {
+            retries++;
+
+            try {
+                //Sleeps for a short period in case the issue can be resolved with time
+                TimeUnit.MILLISECONDS.sleep(5000);
+            } catch(InterruptedException e) {
+                System.out.println("Error: Interrupted");
+                System.out.println(e);
+                return;
+            }
+
+            updateWeatherDataIfChanged();
+            sendAllWeatherDataToServer();
+        } else {
+            System.out.println("Exceeded max retries, exiting.");
+            return;
         }
     }
 

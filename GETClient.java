@@ -115,6 +115,9 @@ public class GETClient {
             } else if (headerLine.startsWith("HTTP/1.1 400")) {
                 handle400Response(reader);
                 return;
+            } else if (headerLine.startsWith("HTTP/1.1 404")) {
+                handle404Response(reader);
+                return;
             } else {
                 handleInvalidServerResponse(reader);
             }
@@ -162,6 +165,13 @@ public class GETClient {
         
         retry(reader);
     }
+
+    public static void handle404Response(
+        BufferedReader reader
+    ) throws IOException {
+        System.out.println("Server returned 404 response, no weather data is available.");
+        retry(reader);
+    }
     
     public static void handleInvalidServerResponse(
         BufferedReader reader
@@ -174,7 +184,7 @@ public class GETClient {
     public static void retry(
         BufferedReader reader
     ) throws IOException {
-        //Client will retry connection & request up to three times
+        //Client will retry connection & request up to three times (for a total of 4 attempts)
 
         if (retries < 3) {
             retries++;
