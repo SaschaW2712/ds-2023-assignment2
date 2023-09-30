@@ -21,10 +21,12 @@ public class Tests extends Thread {
 
     private Tests() {}
 
+    public static AggregationServer aggregationServer;
+
     public static void main(String[] args) throws FileNotFoundException, IOException, NotBoundException {
         try {
             String[] singleServerTests = {
-                "",
+                "basicPUTRequest",
             };
 
             String[] otherTests = {
@@ -38,44 +40,12 @@ public class Tests extends Thread {
             //SINGLE SERVER TESTS
             System.out.println("Single server tests:");
 
-
-            ArrayList<String> serverArgs = new ArrayList<String>();
-            serverArgs.add("4567");
-            // AggregationServer.main(serverArgs.toArray(new String[serverArgs.size()]));
-
-            AggregationServer aggregationServer = new AggregationServer();
-            Thread serverThread = new Thread(() -> {
-                aggregationServer.main(serverArgs.toArray(new String[serverArgs.size()]));
-            });
-            serverThread.start();
-
-            ArrayList<String> putClientArgs = new ArrayList<String>();
-            putClientArgs.add("localhost:4567");
-            putClientArgs.add("content-server-input/weather-data1.txt");
-            
-            ContentServer.main(putClientArgs.toArray(new String[putClientArgs.size()]));
-
-            Thread contentServerThread = new Thread(() -> {
-                ContentServer.main(putClientArgs.toArray(new String[putClientArgs.size()]));
-            });
-            contentServerThread.start();
-
-            // Wait for the client to finish (or implement your own logic)
-            try {
-                contentServerThread.join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+            for (String test : singleServerTests) {
+                boolean currentTestPassed = runSingleClientTest(test);
+                if (currentTestPassed) {
+                    passCount++;
+                }
             }
-
-            // Shut down the server
-            aggregationServer.shutdown();
-
-            // for (String test : singleServerTests) {
-            //     boolean currentTestPassed = runSingleClientTest(test);
-            //     if (currentTestPassed) {
-            //         passCount++;
-            //     }
-            // }
 
             // System.out.println();
 
@@ -91,16 +61,23 @@ public class Tests extends Thread {
             System.out.println();
             System.out.println(passCount + "/" + numTests + " Tests Passed");
         } catch(Exception e) {
-            System.out.println("CalculatorTests exception:");
+            System.out.println("Tests exception:");
             System.out.print(e);
             return;
         }
     }
 
-    public static void startAggregationServer(
-        
-    ) {
+    public static void startAggregationServer() {
+        ArrayList<String> serverArgs = new ArrayList<String>();
+        serverArgs.add("4567");
+        // AggregationServer.main(serverArgs.toArray(new String[serverArgs.size()]));
 
+        aggregationServer = new AggregationServer();
+        Thread serverThread = new Thread(() -> {
+            aggregationServer.main(serverArgs.toArray(new String[serverArgs.size()]));
+        });
+
+        serverThread.start();
     }
 
     //Generate arguments to pass to client
@@ -115,15 +92,13 @@ public class Tests extends Thread {
 
             ArrayList<String> clientArgs = new ArrayList<String>();
 
-            clientArgs.add(outputFileName);
-
             for (String line : inputFileLines) {
                 clientArgs.add(line);
             }
 
-            if (appendClearAll) {
-                clientArgs.add("clearall");
-            }
+            // if (appendClearAll) {
+            //     clientArgs.add("clearall");
+            // }
 
             return clientArgs.toArray(new String[clientArgs.size()]);
         } catch(Exception e) {
@@ -160,35 +135,53 @@ public class Tests extends Thread {
     //Runs a given test on a single client
     //Takes input for the client from the input file corresponding to testName, and compares observed output against expected outputs.
     //Returns "true" or "false" depending on whether the test passed.
-    // public static boolean runSingleClientTest(String testName) {
-    //     try {
-    //         String inputDirectory = "testInputs/singleClient/";
-    //         String expectedOutputsDirectory = "testExpectedOutputs/singleClient/";
-    //         String observedOutputsDirectory = "testObservedOutputs/singleClient/";
+    public static boolean runSingleClientTest(String testName) {
+        String inputDirectory = "testInputs/";
+        String expectedOutputsDirectory = "testExpectedOutputs/";
+        String observedOutputsDirectory = "testObservedOutputs/";
 
-    //         String[] clientArgs = getClientArgsFromFile(inputDirectory + testName, observedOutputsDirectory + testName, true);
+        try {
+
+            String[] clientArgs = getClientArgsFromFile(inputDirectory + testName, observedOutputsDirectory + testName, true);
+
+            startAggregationServer();
+            TimeUnit.MILLISECONDS.sleep(3000);
             
-    //         String[] expectedOutput = getFileLinesAsArray(expectedOutputsDirectory + testName);
-            
-    //         CalculatorClient.main(clientArgs);
+            ContentServer.main(clientArgs);
+            Thread contentServerThread = new Thread(() -> {
+                ContentServer.main(clientArgs);
+            });
+            contentServerThread.start();
+            System.out.println("Started content server");
 
-    //         String[] clientOutput = getFileLinesAsArray(observedOutputsDirectory + testName);
+            try {
+                contentServerThread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+                return false;
+            }
 
-    //         if (Arrays.equals(clientOutput, expectedOutput)) {
-    //             System.out.println(testName + ": PASS");
-    //             return true;
-    //         } else {
-    //             System.out.println(testName + ": FAIL (see below for details)");
-    //             System.out.println("Expected: " + Arrays.toString(expectedOutput) + "");
-    //             System.out.println("Observed: " + Arrays.toString(clientOutput));
-    //             return false;
-    //         }
-    //     } catch(Exception e) {
-    //         System.out.println("Test error:");
-    //         System.out.print(e);
-    //         return false;
-    //     }
-    // }
+            System.out.println("Shutting down server");
+            aggregationServer.shutdown();
+
+            String[] expectedOutput = getFileLinesAsArray(expectedOutputsDirectory + testName);
+            String[] observedOutput = getFileLinesAsArray(observedOutputsDirectory + testName);
+
+            if (Arrays.equals(observedOutput, expectedOutput)) {
+                System.out.println(testName + ": PASS");
+                return true;
+            } else {
+                System.out.println(testName + ": FAIL (see below for details)");
+                System.out.println("Expected: " + Arrays.toString(expectedOutput) + "");
+                System.out.println("Observed: " + Arrays.toString(observedOutput));
+                return false;
+            }
+        } catch(Exception e) {
+            System.out.println("Test error:" + e.getLocalizedMessage());
+            System.out.print(e);
+            return false;
+        }
+    }
 
     //Runs a given test on a four clients at once.
     //Takes input for the clients from the input files corresponding to testName, and compares observed output against expected outputs.

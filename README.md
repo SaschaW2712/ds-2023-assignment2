@@ -5,9 +5,7 @@ Currently basic functionality is mostly implemented:
     - client, server and content server processes start up and communicate
     - PUT operation works for one content server
     - GET operation works for many read clients
-    - Aggregation server expunging expired data MOSTLY works (30s)
-        - The aggregation server checks and refreshes data only when it starts up and when a PUT request is made
-        - Still to implement: refreshing data on GET request
+    - Aggregation server expunging expired data works (30s)
     - Retry on errors (server not available etc) works
         - The GET client and Content Server will retry their request three times.
 

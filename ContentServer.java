@@ -2,11 +2,14 @@
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.UnknownHostException;
@@ -19,6 +22,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class ContentServer {
     
+    public static PrintStream outputStream = new PrintStream(System.out);
+
     public static LamportClock clock = new LamportClock();
     public static String serverName;
     public static int port;
@@ -41,6 +46,15 @@ public class ContentServer {
             return;
         }
 
+        if (args.length == 3) {
+            try {
+                outputStream = new PrintStream(new FileOutputStream(args[2]));
+            } catch(FileNotFoundException e) {
+                System.out.println("Couldn't find output file");
+                return;
+            }
+        }
+
         //Get initial server clock
         getServerClock();
 
@@ -51,15 +65,12 @@ public class ContentServer {
     public static void getServerClock() {
         try (Socket socket = new Socket(serverName, port)) {
             
-            System.out.println("Connected to server socket\n");
-            InputStream inputStream = socket.getInputStream();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+            outputStream.println("Connected to server socket\n");
+            BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             
-            OutputStream outputStream = socket.getOutputStream();
-            PrintWriter writer = new PrintWriter(outputStream, true);
+            PrintWriter writer = new PrintWriter(socket.getOutputStream(), true);
             
-            
-            System.out.println("\nSending Clock Request\n");
+            outputStream.println("\nSending Clock Request\n");
             writeClockRequest(writer);                        
             
             // Shutdown output to signal the end of the request
@@ -68,13 +79,13 @@ public class ContentServer {
             handleServerResponse(reader);
         
         } catch (UnknownHostException ex) {
-            System.out.println("Server not found: " + ex.getMessage());
+            outputStream.println("Server not found: " + ex.getMessage());
         } catch (JsonParseException ex) {
-            System.out.println("JSON parsing error: " + ex.getMessage());
+            outputStream.println("JSON parsing error: " + ex.getMessage());
         } catch (JsonMappingException ex) {
-            System.out.println("JSON mapping error: " + ex.getMessage());
+            outputStream.println("JSON mapping error: " + ex.getMessage());
         } catch (IOException ex) {
-            System.out.println("I/O error: " + ex.getMessage());
+            outputStream.println("I/O error: " + ex.getMessage());
         }    
     }
     
@@ -87,7 +98,7 @@ public class ContentServer {
             try {
                 weatherData = parseInputFile(inputFilePath);
             } catch (IOException ex) {
-                System.out.println("IOException: " + ex.getLocalizedMessage());
+                outputStream.println("IOException: " + ex.getLocalizedMessage());
             }
         }
     }
@@ -104,7 +115,7 @@ public class ContentServer {
         WeatherData data
     ) {
         try (Socket socket = new Socket(serverName, port)) {
-            System.out.println("\nConnected to server socket\n");
+            outputStream.println("\nConnected to server socket\n");
 
             BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             PrintWriter writer = new PrintWriter(socket.getOutputStream(), true);
@@ -114,23 +125,23 @@ public class ContentServer {
             String jsonBodyString = mapper.writeValueAsString(data);
             
             //Send PUT request to aggregation server
-            System.out.println("\nSending Put Request\n");
+            outputStream.println("\nSending Put Request\n");
             writeDataPUTRequest(writer, serverName, jsonBodyString);
             
             socket.shutdownOutput();
             handleServerResponse(reader);
         
         } catch (UnknownHostException ex) {
-            System.out.println("Server not found: " + ex.getMessage());
+            outputStream.println("Server not found: " + ex.getMessage());
             retryOnError();
         } catch (JsonParseException ex) {
-            System.out.println("JSON parsing error: " + ex.getMessage());
+            outputStream.println("JSON parsing error: " + ex.getMessage());
             retryOnError();
         } catch (JsonMappingException ex) {
-            System.out.println("JSON mapping error: " + ex.getMessage());
+            outputStream.println("JSON mapping error: " + ex.getMessage());
             retryOnError();
         } catch (IOException ex) {
-            System.out.println("I/O error: " + ex.getMessage());
+            outputStream.println("I/O error: " + ex.getMessage());
             retryOnError();
         }
     }
@@ -159,7 +170,7 @@ public class ContentServer {
     public static void handleServerResponse(BufferedReader reader) {
         try {
             //Read server response
-            System.out.println("\nResponse from server:");
+            outputStream.println("\nResponse from server:");
             
             String line;
             while ((line = reader.readLine()) != null) {
@@ -169,10 +180,10 @@ public class ContentServer {
                     String clockLine = line.split(":")[1].trim();
                     clock.updateValue(Integer.parseInt(clockLine));
                 }
-                System.out.println(line);
+                outputStream.println(line);
             }
         } catch(IOException ex) {
-            System.out.println("IOException handling server resonse: " + ex.getLocalizedMessage());
+            outputStream.println("IOException handling server resonse: " + ex.getLocalizedMessage());
             retryOnError();
         }
     }
@@ -186,15 +197,15 @@ public class ContentServer {
                 //Sleeps for a short period in case the issue can be resolved with time
                 TimeUnit.MILLISECONDS.sleep(5000);
             } catch(InterruptedException e) {
-                System.out.println("Error: Interrupted");
-                System.out.println(e);
+                outputStream.println("Error: Interrupted");
+                outputStream.println(e);
                 return;
             }
 
             updateWeatherDataIfChanged();
             sendAllWeatherDataToServer();
         } else {
-            System.out.println("Exceeded max retries, exiting.");
+            outputStream.println("Exceeded max retries, exiting.");
             return;
         }
     }
@@ -221,11 +232,11 @@ public class ContentServer {
                 line = reader.readLine();
 
                 if (line == null) {
-                    // System.out.println("End of file");
+                    // outputStream.println("End of file");
                     data.add(currentData);
                     break;
                 } else if (line.startsWith("id:")) {
-                    // System.out.println("Starting new entry");
+                    // outputStream.println("Starting new entry");
                     data.add(currentData);
                     currentData = new WeatherData(clock.getValue(), System.currentTimeMillis());
                 }
@@ -233,7 +244,7 @@ public class ContentServer {
 
             reader.close();
         } catch (IOException ex) {
-            System.out.println("Error parsing input file: " + ex.getLocalizedMessage());
+            outputStream.println("Error parsing input file: " + ex.getLocalizedMessage());
             ex.printStackTrace();
         }
 

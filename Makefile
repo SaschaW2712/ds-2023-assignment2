@@ -5,14 +5,14 @@ all: compile
 compile: AggregationServer.java ContentServer.java GETClient.java Tests.java
 	javac -cp .:${JARFILES} -d classfiles $^
 
-server:
+server: compile
 	java -cp classfiles:${JARFILES} AggregationServer 4567
 
-content:
+content: compile
 	java -cp classfiles:${JARFILES} ContentServer localhost:4567 content-server-input/weather-data1.txt
 
-client:
+client: compile
 	java -cp classfiles:${JARFILES} GETClient localhost:4567
 
-test:
+test: compile
 	java -cp classfiles:${JARFILES} Tests
