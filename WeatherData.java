@@ -230,8 +230,8 @@ public class WeatherData implements Comparable<WeatherData> {
         return sentClockTime;
     }
 
-    public void setSentClockTime(int sentClockTime) {
-        this.sentClockTime = sentClockTime;
+    public void setClockTime(int clockTime) {
+        this.sentClockTime = clockTime;
     }
 
     public Long getCreatedAtMillis() {

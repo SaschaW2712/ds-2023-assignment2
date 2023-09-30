@@ -22,6 +22,8 @@ public class AggregationServer {
     public static LamportClock clock = new LamportClock();
     public static String dataFilePath = "weather-data/";
     public static boolean initalised = false;
+    public static ServerSocket serverSocket;
+    public static boolean isRunning = true;
 
     public static void main(String[] args) {
         int port = 4567;
@@ -32,11 +34,11 @@ public class AggregationServer {
 
         recoverIfNeeded();
  
-        try (ServerSocket serverSocket = new ServerSocket(port)) {
- 
+        try {
+            serverSocket = new ServerSocket(port);
             System.out.println("Server is listening on port " + port);
  
-            while (true) {
+            while (isRunning) {
                 Socket socket = serverSocket.accept();
  
                 System.out.println("New client connected");
@@ -407,6 +409,17 @@ public class AggregationServer {
         } catch (Exception ex) {
             System.out.println("Exception in recovery: " + ex.getLocalizedMessage());
             ex.printStackTrace();
+        }
+    }
+
+    public void shutdown() {
+        isRunning = false;
+        try {
+            if (serverSocket != null && !serverSocket.isClosed()) {
+                serverSocket.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }

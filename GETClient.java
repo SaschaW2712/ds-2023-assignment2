@@ -39,8 +39,7 @@ public class GETClient {
         getAndPrintWeatherData();
     }
     
-    public static void setUpServer(
-    ) {        
+    public static void setUpServer() {        
         try(Socket socket = new Socket(serverName, port);) {
             
             // System.out.println("Connected to server socket");
@@ -51,7 +50,7 @@ public class GETClient {
             PrintWriter writer = new PrintWriter(outputStream, true);
 
             //GET and update clock
-            sendClockRequest(writer);
+            writeClockRequest(writer);
             socket.shutdownOutput();
             handleServerResponse(reader, RequestType.Clock);
 
@@ -73,7 +72,7 @@ public class GETClient {
             PrintWriter writer = new PrintWriter(outputStream, true);
 
             //GET and print weather
-            sendWeatherDataRequest(writer);
+            writeWeatherDataRequest(writer);
             socket.shutdownOutput();
             handleServerResponse(reader, RequestType.WeatherData);
 
@@ -84,7 +83,7 @@ public class GETClient {
         }
     }
 
-    public static void sendClockRequest(
+    public static void writeClockRequest(
         PrintWriter writer
     ) { 
         // Send the GET request
@@ -94,7 +93,7 @@ public class GETClient {
         writer.println();
     }
 
-    public static void sendWeatherDataRequest(
+    public static void writeWeatherDataRequest(
         PrintWriter writer
     ) { 
         // Send the GET request
@@ -109,9 +108,7 @@ public class GETClient {
         BufferedReader reader,
         RequestType type
     ) {
-        try {
-            // System.out.println("Reading from server");
-            
+        try {            
             String headerLine = reader.readLine();
             if (headerLine.startsWith("HTTP/1.1 200 OK")) {
                 handleOKResponse(reader, type);
@@ -134,6 +131,8 @@ public class GETClient {
     ) throws IOException {
         
         String clockLine = reader.readLine();
+
+        //The first line consumed after headers should be the server's clock
         if (clockLine.startsWith("Clock-Time:")) {
             int serverClockTime = Integer.parseInt(clockLine.split(":", 2)[1].trim());
             clock.updateValue(serverClockTime);
@@ -143,13 +142,14 @@ public class GETClient {
         }
         
         if (type == RequestType.WeatherData) {
+            //Ignore any lines up to the JSON body
             while (!(reader.readLine()).isEmpty()) {}
         
             ObjectMapper mapper = new ObjectMapper();
             
             WeatherData weatherData;
             weatherData = mapper.readValue(reader.readLine(), WeatherData.class);
-            weatherData.setSentClockTime(clock.getValue());
+            weatherData.setClockTime(clock.getValue());
             
             weatherData.printData();
         }
@@ -174,10 +174,15 @@ public class GETClient {
     public static void retry(
         BufferedReader reader
     ) throws IOException {
+        //Client will retry connection & request up to three times
+
         if (retries < 3) {
             retries++;
+
             try {
+                //Sleeps for a short period in case the issue can be resolved with time
                 TimeUnit.MILLISECONDS.sleep(5000);
+
             } catch(InterruptedException e) {
                 System.out.println("Error: Interrupted");
                 System.out.println(e);
@@ -187,8 +192,9 @@ public class GETClient {
             while (reader.readLine() != null) {}
 
             setUpServer();
+            getAndPrintWeatherData();
         } else {
-            System.out.println("exceeded retries");
+            System.out.println("Exceeded max retries, exiting.");
             return;
         }
     }

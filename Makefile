@@ -2,7 +2,7 @@ JARFILES=lib/jackson-core-2.12.5.jar:lib/jackson-databind-2.12.5.jar:lib/jackson
 
 all: compile
 
-compile: AggregationServer.java ContentServer.java GETClient.java
+compile: AggregationServer.java ContentServer.java GETClient.java Tests.java
 	javac -cp .:${JARFILES} -d classfiles $^
 
 server:
@@ -13,3 +13,6 @@ content:
 
 client:
 	java -cp classfiles:${JARFILES} GETClient localhost:4567
+
+test:
+	java -cp classfiles:${JARFILES} Tests
