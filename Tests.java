@@ -67,14 +67,16 @@ public class Tests extends Thread {
         }
     }
 
-    public static void startAggregationServer() {
-        ArrayList<String> serverArgs = new ArrayList<String>();
-        serverArgs.add("4567");
+    public static void startAggregationServer(
+        String inputFilePath,
+        String outputFilePath
+    ) throws IOException {
+        String[] args = getClientArgsFromFile(inputFilePath, outputFilePath, false);
         // AggregationServer.main(serverArgs.toArray(new String[serverArgs.size()]));
 
         aggregationServer = new AggregationServer();
         Thread serverThread = new Thread(() -> {
-            aggregationServer.main(serverArgs.toArray(new String[serverArgs.size()]));
+            aggregationServer.main(args);
         });
 
         serverThread.start();
@@ -95,6 +97,8 @@ public class Tests extends Thread {
             for (String line : inputFileLines) {
                 clientArgs.add(line);
             }
+
+            clientArgs.add(outputFileName);
 
             // if (appendClearAll) {
             //     clientArgs.add("clearall");
@@ -140,11 +144,15 @@ public class Tests extends Thread {
         String expectedOutputsDirectory = "testExpectedOutputs/";
         String observedOutputsDirectory = "testObservedOutputs/";
 
+
         try {
 
-            String[] clientArgs = getClientArgsFromFile(inputDirectory + testName, observedOutputsDirectory + testName, true);
+            String[] clientArgs = getClientArgsFromFile(inputDirectory + testName + "/content1", observedOutputsDirectory + testName + "/content1", true);
 
-            startAggregationServer();
+            String aggregationServerInputFilePath = inputDirectory + testName + "/aggregation";
+            String aggregationServerOutputFilePath = observedOutputsDirectory + testName + "/aggregation";
+
+            startAggregationServer(aggregationServerInputFilePath, aggregationServerOutputFilePath);
             TimeUnit.MILLISECONDS.sleep(3000);
             
             ContentServer.main(clientArgs);
@@ -164,8 +172,8 @@ public class Tests extends Thread {
             System.out.println("Shutting down server");
             aggregationServer.shutdown();
 
-            String[] expectedOutput = getFileLinesAsArray(expectedOutputsDirectory + testName);
-            String[] observedOutput = getFileLinesAsArray(observedOutputsDirectory + testName);
+            String[] expectedOutput = getFileLinesAsArray(expectedOutputsDirectory + testName + "/content1");
+            String[] observedOutput = getFileLinesAsArray(observedOutputsDirectory + testName + "/content1");
 
             if (Arrays.equals(observedOutput, expectedOutput)) {
                 System.out.println(testName + ": PASS");

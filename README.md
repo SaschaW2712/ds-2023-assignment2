@@ -55,3 +55,8 @@ The test cases currently planned for automated testing implementation:
     - Multiple input entries in the same data file can be sent by content server
     - Aggregation server can handle requests in quick succession
     - Aggregation server responds with the latest entry by clock time to GET client
+
+For single server/client tests, input/output directories are organised into folders by test name, with contents:
+    - `/aggregation` for the AggregationServer
+    - `/content<num>` for the ContentServer(s) (e.g. /content1, /content2)
+    - `/client<num>` for the GETClient(s) output
