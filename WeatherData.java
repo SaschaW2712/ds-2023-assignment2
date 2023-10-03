@@ -1,5 +1,7 @@
 
 
+import java.io.PrintStream;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -83,26 +85,26 @@ public class WeatherData implements Comparable<WeatherData> {
         }
     }
 
-    public void printData() {
-        // System.out.println("Sent at clock time: " + this.sentClockTime);
-        // System.out.println("CreatedAt millis: " + this.createdAtMillis);
-        System.out.println("Content server id: " + this.id);
-        System.out.println("Name: " + this.name);
-        System.out.println("State: " + this.state);
-        System.out.println("Time zone: " + this.timeZone);
-        System.out.println("Latitude: " + this.lat);
-        System.out.println("Longitude: " + this.lon);
-        System.out.println("Local date & time: " + this.localDateTimeStamp);
-        System.out.println("Local date & time (long): " + this.localDateTimeMilliseconds);
-        System.out.println("Air temperature: " + this.airTemp);
-        System.out.println("Apparent temperature: " + this.apparentTemp);
-        System.out.println("Cloud: " + this.cloud);
-        System.out.println("Dew PT: " + this.dewPT);
-        System.out.println("Pressure: " + this.pressure);
-        System.out.println("Relative humidity: " + this.relativeHumidity);
-        System.out.println("Wind direction: " + this.windDirection);
-        System.out.println("Wind speed (KMH): " + this.windSpeedKMH);
-        System.out.println("Wind speed (KT): " + this.windSpeedKT);
+    public void printData(PrintStream outputStream) {
+        // outputStream.println("Sent at clock time: " + this.sentClockTime);
+        // outputStream.println("CreatedAt millis: " + this.createdAtMillis);
+        outputStream.println("Content server id: " + this.id);
+        outputStream.println("Name: " + this.name);
+        outputStream.println("State: " + this.state);
+        outputStream.println("Time zone: " + this.timeZone);
+        outputStream.println("Latitude: " + this.lat);
+        outputStream.println("Longitude: " + this.lon);
+        outputStream.println("Local date & time: " + this.localDateTimeStamp);
+        outputStream.println("Local date & time (long): " + this.localDateTimeMilliseconds);
+        outputStream.println("Air temperature: " + this.airTemp);
+        outputStream.println("Apparent temperature: " + this.apparentTemp);
+        outputStream.println("Cloud: " + this.cloud);
+        outputStream.println("Dew PT: " + this.dewPT);
+        outputStream.println("Pressure: " + this.pressure);
+        outputStream.println("Relative humidity: " + this.relativeHumidity);
+        outputStream.println("Wind direction: " + this.windDirection);
+        outputStream.println("Wind speed (KMH): " + this.windSpeedKMH);
+        outputStream.println("Wind speed (KT): " + this.windSpeedKT);
     }
 
     public void updateDataFromKeyValuePair(String key, String value) {

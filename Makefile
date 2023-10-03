@@ -9,7 +9,7 @@ server: compile
 	java -cp classfiles:${JARFILES} AggregationServer 4567
 
 content: compile
-	java -cp classfiles:${JARFILES} ContentServer localhost:4567 content-server-input/weather-data1.txt
+	java -cp classfiles:${JARFILES} ContentServer localhost:4567 testWeatherData/content_server_1.txt
 
 client: compile
 	java -cp classfiles:${JARFILES} GETClient localhost:4567

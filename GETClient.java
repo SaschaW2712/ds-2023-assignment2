@@ -1,10 +1,13 @@
 
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
+import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.UnknownHostException;
@@ -12,13 +15,10 @@ import java.util.concurrent.TimeUnit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-enum RequestType {
-    WeatherData,
-    Clock
-}
-
 public class GETClient {
     
+    public static PrintStream outputStream = new PrintStream(System.out);
+
     public static LamportClock clock = new LamportClock();
     public static int retries = 0;
 
@@ -26,6 +26,11 @@ public class GETClient {
     public static int port;
     
     public static void main(String[] args) {
+        clock = new LamportClock();
+        retries = 0;
+        serverName = "";
+        port = 0;
+
         if (args.length >= 1) {
             String[] clientArgs = args[0].split(":");
             serverName = clientArgs[0];
@@ -35,19 +40,40 @@ public class GETClient {
             return;
         }
 
+        if (args.length == 2) {
+            try {
+                PrintWriter writer = new PrintWriter(args[1]);
+                writer.print("");
+                writer.close();
+
+                outputStream = new PrintStream(new FileOutputStream(args[1], true));
+            } catch(FileNotFoundException e) {
+                System.out.println("Couldn't find output file");
+                return;
+            }
+        }
+
         setUpServer();
+        if (retries >= 3) {
+            outputStream.println("Failed to get server clock, exiting.");
+            return;
+        }
+        
+        retries = 0;
         getAndPrintWeatherData();
+        if (retries >= 3) {
+            outputStream.println("Failed to get weather data, exiting.");
+            return;
+        }
     }
     
     public static void setUpServer() {        
         try(Socket socket = new Socket(serverName, port);) {
             
-            // System.out.println("Connected to server socket");
-            InputStream inputStream = socket.getInputStream();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+            // outputStream.println("Connected to server socket");
+            BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             
-            OutputStream outputStream = socket.getOutputStream();
-            PrintWriter writer = new PrintWriter(outputStream, true);
+            PrintWriter writer = new PrintWriter(socket.getOutputStream(), true);
 
             //GET and update clock
             writeClockRequest(writer);
@@ -55,21 +81,21 @@ public class GETClient {
             handleServerResponse(reader, RequestType.Clock);
 
         } catch (UnknownHostException ex) {
-            System.out.println("Server not found: " + ex.getMessage());
+            outputStream.println("Server not found: " + ex.getMessage());
         } catch (IOException ex) {
-            System.out.println("I/O error: " + ex.getMessage());
+            outputStream.println("I/O error: " + ex.getMessage());
+            retry(RequestType.Clock);
         }
     }
 
     public static void getAndPrintWeatherData() {
         try(Socket socket = new Socket(serverName, port);) {
             
-            System.out.println("Connected to server socket");
+            outputStream.println("Connected to server socket");
             InputStream inputStream = socket.getInputStream();
             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
             
-            OutputStream outputStream = socket.getOutputStream();
-            PrintWriter writer = new PrintWriter(outputStream, true);
+            PrintWriter writer = new PrintWriter(socket.getOutputStream(), true);
 
             //GET and print weather
             writeWeatherDataRequest(writer);
@@ -77,9 +103,9 @@ public class GETClient {
             handleServerResponse(reader, RequestType.WeatherData);
 
         } catch (UnknownHostException ex) {
-            System.out.println("Server not found: " + ex.getMessage());
+            outputStream.println("Server not found: " + ex.getMessage());
         } catch (IOException ex) {
-            System.out.println("I/O error in getAndPrintWeatherData: " + ex.getMessage());
+            outputStream.println("I/O error in getAndPrintWeatherData: " + ex.getMessage());
         }
     }
 
@@ -106,31 +132,33 @@ public class GETClient {
     
     public static void handleServerResponse(
         BufferedReader reader,
-        RequestType type
-    ) {
+        RequestType requestType
+    ) throws IOException {
         try {            
             String headerLine = reader.readLine();
+
             if (headerLine.startsWith("HTTP/1.1 200 OK")) {
-                handleOKResponse(reader, type);
+                handleOKResponse(reader, requestType);
             } else if (headerLine.startsWith("HTTP/1.1 400")) {
-                handle400Response(reader);
+                handle400Response(reader, requestType);
                 return;
             } else if (headerLine.startsWith("HTTP/1.1 404")) {
                 handle404Response(reader);
                 return;
             } else {
-                handleInvalidServerResponse(reader);
+                handleInvalidServerResponse(reader, requestType);
             }
             
             
         } catch(IOException ex) {
-            System.out.println("I/O error: " + ex.getMessage());
+            outputStream.println("I/O error: " + ex.getMessage());
+            retry(requestType);
         }
     }
     
     public static void handleOKResponse(
         BufferedReader reader,
-        RequestType type
+        RequestType requestType
     ) throws IOException {
         
         String clockLine = reader.readLine();
@@ -140,11 +168,11 @@ public class GETClient {
             int serverClockTime = Integer.parseInt(clockLine.split(":", 2)[1].trim());
             clock.updateValue(serverClockTime);
         } else {
-            handleInvalidServerResponse(reader);
+            handleInvalidServerResponse(reader, requestType);
             return;
         }
         
-        if (type == RequestType.WeatherData) {
+        if (requestType == RequestType.WeatherData) {
             //Ignore any lines up to the JSON body
             while (!(reader.readLine()).isEmpty()) {}
         
@@ -154,57 +182,58 @@ public class GETClient {
             weatherData = mapper.readValue(reader.readLine(), WeatherData.class);
             weatherData.setClockTime(clock.getValue());
             
-            weatherData.printData();
+            weatherData.printData(outputStream);
         }
     }
     
     public static void handle400Response(
-        BufferedReader reader
+        BufferedReader reader,
+        RequestType requestType
     ) throws IOException {
-        System.out.println("Server returned 400 response");
+        outputStream.println("Server returned 400 response");
         
-        retry(reader);
+        retry(requestType);
     }
 
     public static void handle404Response(
         BufferedReader reader
     ) throws IOException {
-        System.out.println("Server returned 404 response, no weather data is available.");
-        retry(reader);
+        outputStream.println("Server returned 404 response, no weather data is available.");
     }
     
     public static void handleInvalidServerResponse(
-        BufferedReader reader
+        BufferedReader reader,
+        RequestType requestType
     ) throws IOException {
-        System.out.println("Server returned invalid response format");
+        outputStream.println("Server returned invalid response format");
 
-        retry(reader);
+        retry(requestType);
     }
 
     public static void retry(
-        BufferedReader reader
-    ) throws IOException {
+        RequestType requestType
+    ) {
         //Client will retry connection & request up to three times (for a total of 4 attempts)
-
         if (retries < 3) {
             retries++;
 
             try {
                 //Sleeps for a short period in case the issue can be resolved with time
-                TimeUnit.MILLISECONDS.sleep(5000);
+                TimeUnit.MILLISECONDS.sleep(1000);
 
             } catch(InterruptedException e) {
-                System.out.println("Error: Interrupted");
-                System.out.println(e);
+                outputStream.println("Error: Interrupted");
+                outputStream.println(e);
                 return;
             }
 
-            while (reader.readLine() != null) {}
-
-            setUpServer();
-            getAndPrintWeatherData();
+            if (requestType == RequestType.Clock) {
+                setUpServer();
+            } else if (requestType == RequestType.WeatherData) {
+                getAndPrintWeatherData();
+            }
         } else {
-            System.out.println("Exceeded max retries, exiting.");
+            outputStream.println("Exceeded max retries.");
             return;
         }
     }

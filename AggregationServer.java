@@ -30,6 +30,7 @@ public class AggregationServer {
 
     public static void main(String[] args) {
         int port = 4567;
+        isRunning = true;
 
         if (args.length >= 1) {
             port = Integer.parseInt(args[0]);
@@ -37,7 +38,11 @@ public class AggregationServer {
 
         if (args.length == 2) {
             try {
-                outputStream = new PrintStream(new FileOutputStream(args[1]));
+                PrintWriter writer = new PrintWriter(args[1]);
+                writer.print("");
+                writer.close();
+                
+                outputStream = new PrintStream(new FileOutputStream(args[1]), true);
             } catch(FileNotFoundException e) {
                 System.out.println("Couldn't find output file");
                 return;
@@ -74,6 +79,7 @@ public class AggregationServer {
         } catch (JsonMappingException ex) {
             outputStream.println("JSON mapping error: " + ex.getMessage());
         } catch (IOException ex) {
+            shutdown();
             outputStream.println("I/O error: " + ex.getMessage());
         }
     }
@@ -135,7 +141,7 @@ public class AggregationServer {
 
             outputStream.println("Sending 200");
 
-            outputStream.println("Response being sent:" + response + "\n\n");
+            outputStream.println("Response being sent:\n" + response + "\n\n");
             // Write the JSON line to the writer
             writer.println(response);
             
@@ -427,7 +433,7 @@ public class AggregationServer {
         }
     }
 
-    public void shutdown() {
+    public static void shutdown() {
         isRunning = false;
         try {
             if (serverSocket != null && !serverSocket.isClosed()) {

@@ -1,0 +1,21 @@
+id:IDS60902
+name:Cool Town
+state:SA
+wind_spd_kmh:14
+id:IDS60901
+name:Different City
+state:QLD
+time_zone:AEST
+lat:-37.2
+lon:138.694249
+local_date_time:12/04:10pm
+local_date_time_full:20230715160003
+air_temp:28.2
+apparent_t:30.3
+cloud:Clear
+dewpt:1.0
+press:12
+rel_hum:78
+wind_dir:E
+wind_spd_kmh:12
+wind_spd_kt:3

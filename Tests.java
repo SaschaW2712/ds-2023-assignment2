@@ -17,46 +17,45 @@ import java.util.Scanner;  // Import the Scanner class
 import java.util.Stack;
 import java.util.concurrent.TimeUnit;
 
+
+enum TestingIDType {
+    ContentServer,
+    AggregationServer,
+    GETClient
+}
 public class Tests extends Thread {
 
     private Tests() {}
 
     public static AggregationServer aggregationServer;
+    public static int passCount = 0;
 
     public static void main(String[] args) throws FileNotFoundException, IOException, NotBoundException {
         try {
-            String[] singleServerTests = {
-                "basicPUTRequest",
-            };
+            int numTests = 7;
 
-            String[] otherTests = {
-                "",
-            };
+            testContentServerWithoutAvailableServer();
+            testGETClientWithoutAvailableServer();
 
-            int passCount = 0;
-            int numTests = singleServerTests.length + otherTests.length;
+            startAggregationServer(1);
+            TimeUnit.MILLISECONDS.sleep(1000); //Wait for server to start up
 
+            testContentServerOKRequests();
+            testContentServerDoesNotSendEmpty();
+            testGETClientOKRequest(2);
 
-            //SINGLE SERVER TESTS
-            System.out.println("Single server tests:");
+            stopAggregationServer();
+            TimeUnit.MILLISECONDS.sleep(1000); //Wait for server to stop fully
 
-            for (String test : singleServerTests) {
-                boolean currentTestPassed = runSingleClientTest(test);
-                if (currentTestPassed) {
-                    passCount++;
-                }
-            }
+            startAggregationServer(2);
+            TimeUnit.MILLISECONDS.sleep(1000);
 
-            // System.out.println();
+            testGETClientOKRequest(3);
 
-            // //CONCURRENT MULTIPLE CLIENT TESTS
-            // System.out.println("Multiple client tests:");
-            // for (String test : concurrentClientsTests) {
-            //     boolean passed = runConcurrentClientsTest(test);
-            //     if (passed) {
-            //         passCount++;
-            //     }
-            // }
+            testAggregationServerFlushesOldData();
+
+            stopAggregationServer();
+
 
             System.out.println();
             System.out.println(passCount + "/" + numTests + " Tests Passed");
@@ -67,19 +66,177 @@ public class Tests extends Thread {
         }
     }
 
-    public static void startAggregationServer(
-        String inputFilePath,
-        String outputFilePath
-    ) throws IOException {
-        String[] args = getClientArgsFromFile(inputFilePath, outputFilePath, false);
-        // AggregationServer.main(serverArgs.toArray(new String[serverArgs.size()]));
+    public static void testContentServerWithoutAvailableServer() {
+        System.out.println("Running test: Content server without available aggregation server.");
+
+        runContentServer(1);
+
+        boolean result = assertEqualFileContents(1, "content_server");
+        if (result) { passCount++; };
+    }
+
+    public static void testGETClientWithoutAvailableServer() {
+        System.out.println("Running test: GET client without available aggregation server.");
+
+        runGETClient(1);
+
+        boolean result = assertEqualFileContents(1, "get_client");
+        if (result) { passCount++; };
+    }
+
+    public static void testContentServerOKRequests() {
+        System.out.println("Running test: Correct content server PUT requests to an available aggregation server.");
+
+        runContentServer(2);
+
+        boolean result = assertEqualFileContents(2, "content_server");
+        if (result) { passCount++; };
+    }
+
+    public static void testContentServerDoesNotSendEmpty() {
+        System.out.println("Running test: Content server does not send data if input is empty.");
+
+        runContentServer(3);
+        
+        boolean result = assertEqualFileContents(2, "content_server");
+        if (result) { passCount++; };
+    }
+
+    public static void testGETClientOKRequest(int testingID) {
+        System.out.println("Running test: Correct GET client request with available data.");
+
+        runGETClient(testingID);
+
+        boolean result = assertEqualFileContents(testingID, "get_client");
+        if (result) { passCount++; };
+    }
+
+    public static void testAggregationServerFlushesOldData() {
+        System.out.println("\nATTENTION!");
+        System.out.println("About to test flushing of old data. A delay of 30 seconds will occur, then the tests will complete.");
+        System.out.println("This is the last test.");
+        System.out.println();
+        System.out.println("Running test: Aggregation server flushes old data, and GET client handles no weather data being available.");
+
+        try {
+            TimeUnit.MILLISECONDS.sleep(30000);
+        } catch(InterruptedException e) {
+            System.out.println("Error: Interrupted");
+            System.out.println(e);
+            return;
+        }
+
+        runGETClient(4);
+
+        boolean result = assertEqualFileContents(4, "get_client");
+        if (result) { passCount++; };
+    }
+
+    public static void runContentServer(int testingID) {
+        String outputFilePath = getObservedOutputFilePath(testingID, "content_server");
+        String dataFilePath = getDataFilePath(testingID);
+        String url = "localhost:4567";
+
+        String[] args = { url, dataFilePath, outputFilePath };
+
+        // System.out.println("Args: " + Arrays.toString(args));
+
+        Thread contentServerThread = new Thread(() -> {
+            ContentServer.main(args);
+        });
+        contentServerThread.start();
+        // System.out.println("Started content server " + testingID);
+
+        try {
+            contentServerThread.join();
+        } catch (InterruptedException e) {
+            System.out.println("Error joining thread for content server " + testingID);
+            e.printStackTrace();
+        }
+    }
+
+    public static void runGETClient(int testingID) {
+        String outputFilePath = "testObservedOutputs/get_client_" + String.valueOf(testingID);
+        String url = "localhost:4567";
+
+        String[] args = { url, outputFilePath };
+
+        // System.out.println("Args: " + Arrays.toString(args));
+        Thread getClientThread = new Thread(() -> {
+            GETClient.main(args);
+        });
+        getClientThread.start();
+        // System.out.println("Started GET client " + testingID);
+
+        try {
+            getClientThread.join();
+        } catch (InterruptedException e) {
+                System.out.println("Error joining thread for GET client " + testingID);
+            e.printStackTrace();
+        }
+    }
+
+    public static void startAggregationServer(int testingID) throws IOException {
+        String portNumber = "4567";
+        String outputFilePath = "testObservedOutputs/aggregation_server_" + String.valueOf(testingID);
+
+        String[] args = { portNumber, outputFilePath };
 
         aggregationServer = new AggregationServer();
+
+        // System.out.println("Starting aggregation server " + String.valueOf(testingID));
         Thread serverThread = new Thread(() -> {
             aggregationServer.main(args);
         });
 
         serverThread.start();
+    }
+
+    public static void stopAggregationServer() {
+        // System.out.println("Stopping aggregation server");
+        aggregationServer.shutdown();
+        aggregationServer = null;
+    }
+
+    public static String getObservedOutputFilePath(int testingID, String type) {
+        return "testObservedOutputs/" + type + "_" + String.valueOf(testingID);
+    }
+
+    public static String getExpectedOutputFilePath(int testingID, String type) {
+        return "testExpectedOutputs/" + type + "_" + String.valueOf(testingID);
+    }
+
+    public static String getDataFilePath(int testingID) {
+        return "testWeatherData/content_server_" + String.valueOf(testingID) + ".txt";
+    }
+
+    public static boolean assertEqualFileContents(
+        int testingID,
+        String type
+    ) {
+        String observedOutputFilePath = getObservedOutputFilePath(testingID, type);
+        String expectedOutputFilePath = getExpectedOutputFilePath(testingID, type);
+
+        try {
+            String[] observedOutput = getFileLinesAsArray(observedOutputFilePath);
+            String[] expectedOutput = getFileLinesAsArray(expectedOutputFilePath);
+
+            if (Arrays.equals(observedOutput, expectedOutput)) {
+                System.out.println("Test PASSED");
+                System.out.println();
+                return true;
+            } else {
+                System.out.println("Test FAILED");
+                System.out.println("Expected: " + Arrays.toString(expectedOutput) + "");
+                System.out.println("Observed: " + Arrays.toString(observedOutput));
+                System.out.println();
+                return false;
+            }
+        } catch(Exception e) {
+            System.out.println("Test error:" + e.getLocalizedMessage());
+            System.out.print(e);
+            return false;
+        }
     }
 
     //Generate arguments to pass to client
@@ -136,110 +293,4 @@ public class Tests extends Thread {
 
     }
 
-    //Runs a given test on a single client
-    //Takes input for the client from the input file corresponding to testName, and compares observed output against expected outputs.
-    //Returns "true" or "false" depending on whether the test passed.
-    public static boolean runSingleClientTest(String testName) {
-        String inputDirectory = "testInputs/";
-        String expectedOutputsDirectory = "testExpectedOutputs/";
-        String observedOutputsDirectory = "testObservedOutputs/";
-
-
-        try {
-
-            String[] clientArgs = getClientArgsFromFile(inputDirectory + testName + "/content1", observedOutputsDirectory + testName + "/content1", true);
-
-            String aggregationServerInputFilePath = inputDirectory + testName + "/aggregation";
-            String aggregationServerOutputFilePath = observedOutputsDirectory + testName + "/aggregation";
-
-            startAggregationServer(aggregationServerInputFilePath, aggregationServerOutputFilePath);
-            TimeUnit.MILLISECONDS.sleep(3000);
-            
-            ContentServer.main(clientArgs);
-            Thread contentServerThread = new Thread(() -> {
-                ContentServer.main(clientArgs);
-            });
-            contentServerThread.start();
-            System.out.println("Started content server");
-
-            try {
-                contentServerThread.join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-                return false;
-            }
-
-            System.out.println("Shutting down server");
-            aggregationServer.shutdown();
-
-            String[] expectedOutput = getFileLinesAsArray(expectedOutputsDirectory + testName + "/content1");
-            String[] observedOutput = getFileLinesAsArray(observedOutputsDirectory + testName + "/content1");
-
-            if (Arrays.equals(observedOutput, expectedOutput)) {
-                System.out.println(testName + ": PASS");
-                return true;
-            } else {
-                System.out.println(testName + ": FAIL (see below for details)");
-                System.out.println("Expected: " + Arrays.toString(expectedOutput) + "");
-                System.out.println("Observed: " + Arrays.toString(observedOutput));
-                return false;
-            }
-        } catch(Exception e) {
-            System.out.println("Test error:" + e.getLocalizedMessage());
-            System.out.print(e);
-            return false;
-        }
-    }
-
-    //Runs a given test on a four clients at once.
-    //Takes input for the clients from the input files corresponding to testName, and compares observed output against expected outputs.
-    //Returns "true" or "false" depending on whether all clients passed.
-//     public static boolean runConcurrentClientsTest(String testName) throws FileNotFoundException, IOException {
-//         String inputDirectory = "testInputs/multipleClients/";
-//         String expectedOutputsDirectory = "testExpectedOutputs/multipleClients/";
-//         String observedOutputsDirectory = "testObservedOutputs/multipleClients/";
-
-//         String[][] clientArgs = {
-//             getClientArgsFromFile(inputDirectory + testName + "_1", observedOutputsDirectory + testName + "_1", false),
-//             getClientArgsFromFile(inputDirectory + testName + "_2", observedOutputsDirectory + testName + "_2", false),
-//             getClientArgsFromFile(inputDirectory + testName + "_3", observedOutputsDirectory + testName + "_3", false),
-//             getClientArgsFromFile(inputDirectory + testName + "_4", observedOutputsDirectory + testName + "_4", false),
-//         };
-
-//         String[][] expectedOutputs = {
-//             getFileLinesAsArray(expectedOutputsDirectory + testName + "_1"),
-//             getFileLinesAsArray(expectedOutputsDirectory + testName + "_2"),
-//             getFileLinesAsArray(expectedOutputsDirectory + testName + "_3"),
-//             getFileLinesAsArray(expectedOutputsDirectory + testName + "_4"),
-//         };  
-        
-//         for (String[] argList : clientArgs) {
-//             CalculatorClient.main(argList);
-//         }
-
-//         CalculatorClient.main(new String[] { "sysout", "clearall" });
-
-//         String[][] clientOutputs = {
-//             getFileLinesAsArray(observedOutputsDirectory + testName + "_1"),
-//             getFileLinesAsArray(observedOutputsDirectory + testName + "_2"),
-//             getFileLinesAsArray(observedOutputsDirectory + testName + "_3"),
-//             getFileLinesAsArray(observedOutputsDirectory + testName + "_4"),
-//         };
-
-//         boolean passed = true;
-
-//         System.out.println(testName + ":");
-//         for (int i = 0; i < clientOutputs.length; i++) {
-//             if (Arrays.equals(clientOutputs[i], expectedOutputs[i])) {
-//                 System.out.println("    Client " + i + ": PASS");
-//             } else {
-//                 System.out.println("    Client " + i + ": FAIL (see below for details)");
-//                 System.out.println("        Expected: " + Arrays.toString(expectedOutputs[i]) + "");
-//                 System.out.println("        Observed: " + Arrays.toString(clientOutputs[i]));
-//                 passed = false;
-//             }
-//         }
-
-//         return passed;
-//     }
 }

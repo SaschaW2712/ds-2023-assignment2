@@ -1,0 +1,5 @@
+Connected to server socket
+Sending Clock Request
+Response from server:
+HTTP/1.1 200 OK
+Clock-Time: 0
