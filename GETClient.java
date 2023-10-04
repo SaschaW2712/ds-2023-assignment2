@@ -30,7 +30,8 @@ public class GETClient {
         serverName = "";
         port = 0;
 
-        
+
+        //Confirm that necessary arguments have been provided
         if (args.length >= 1) {
             String[] clientArgs = args[0].split(":");
             serverName = clientArgs[0];
@@ -40,6 +41,7 @@ public class GETClient {
             return;
         }
 
+        //Redirect system output if requested
         if (args.length == 2) {
             try {
                 PrintWriter writer = new PrintWriter(args[1]);
@@ -53,20 +55,24 @@ public class GETClient {
             }
         }
 
+        //Attempt to connect to an aggregation server
         setUpServer();
         if (retries >= 3) {
             outputStream.println("Failed to get server clock, exiting.");
             return;
         }
-        
-        retries = 0;
+           
+        retries = 0; //reset retries, so that weather data GET request can also retry
+
         getAndPrintWeatherData();
+
         if (retries >= 3) {
             outputStream.println("Failed to get weather data, exiting.");
             return;
         }
     }
     
+    //Connects to the aggregation server and synchronises local Lamport Clock time to match the server's
     public static void setUpServer() {        
         try(Socket socket = new Socket(serverName, port);) {
             
@@ -88,6 +94,7 @@ public class GETClient {
         }
     }
 
+    //Connects to the aggregation server and GETs the latest weather data.
     public static void getAndPrintWeatherData() {
         try(Socket socket = new Socket(serverName, port);) {
             
@@ -109,16 +116,17 @@ public class GETClient {
         }
     }
 
+    //Writes the request for GET "/clock" to a given PrintWriter.
     public static void writeClockRequest(
         PrintWriter writer
     ) { 
-        // Send the GET request
         writer.println("GET /clock HTTP/1.1");
         writer.println("Host: " + serverName);
         writer.println("Clock-Time: " + clock.getValue());
         writer.println();
     }
 
+    //Writes the request for GET "/weatherdata" to a given PrintWriter.
     public static void writeWeatherDataRequest(
         PrintWriter writer
     ) { 
@@ -129,7 +137,7 @@ public class GETClient {
         writer.println();
     }
     
-    
+    //Handles an aggregation server response
     public static void handleServerResponse(
         BufferedReader reader,
         RequestType requestType
@@ -156,6 +164,7 @@ public class GETClient {
         }
     }
     
+    //Handles a 200 OK response, updating local clock time and printing data (if the request was for weather data)
     public static void handleOKResponse(
         BufferedReader reader,
         RequestType requestType
@@ -186,6 +195,7 @@ public class GETClient {
         }
     }
     
+    //Handles a 400 response by triggering the "retry" loop
     public static void handle400Response(
         BufferedReader reader,
         RequestType requestType
@@ -195,12 +205,14 @@ public class GETClient {
         retry(requestType);
     }
 
+    //Handles a 404 response by printing an explanation for the lack of data.
     public static void handle404Response(
         BufferedReader reader
     ) throws IOException {
         outputStream.println("Server returned 404 response, no weather data is available.");
     }
     
+    //Handles an invalid formatted server response by triggering the "retry" loop
     public static void handleInvalidServerResponse(
         BufferedReader reader,
         RequestType requestType
@@ -210,6 +222,7 @@ public class GETClient {
         retry(requestType);
     }
 
+    //Retries the given request type up to 3 times (for a total of 4 attempts including the initial one)
     public static void retry(
         RequestType requestType
     ) {

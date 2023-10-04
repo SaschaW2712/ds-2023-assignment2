@@ -42,7 +42,7 @@ public class ContentServer {
         clock = new LamportClock();
         retries = 0;
         
-        //Confirm that valid arguments have been provided
+        //Confirm that necessary arguments have been provided
         if (args.length >= 2) {
             String[] clientArgs = args[0].split(":");
             serverName = clientArgs[0];
@@ -74,7 +74,7 @@ public class ContentServer {
             return;
         }
         
-        retries = 0;
+        retries = 0; //reset retries, so that weather data PUT request can also retry
 
         //Send weather data to aggregation server
         updateWeatherDataIfChanged();
@@ -222,7 +222,7 @@ public class ContentServer {
         }
     }
 
-    //Retries the given request type up to 3 times (for a total of 4 attempts including the initial).
+    //Retries the given request type up to 3 times (for a total of 4 attempts including the initial one)
     public static void retryOnError(RequestType requestType) {
         if (retries < 3) {
             retries++;

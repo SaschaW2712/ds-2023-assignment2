@@ -86,8 +86,6 @@ public class WeatherData implements Comparable<WeatherData> {
     }
 
     public void printData(PrintStream outputStream) {
-        // outputStream.println("Sent at clock time: " + this.sentClockTime);
-        // outputStream.println("CreatedAt millis: " + this.createdAtMillis);
         outputStream.println("Content server id: " + this.id);
         outputStream.println("Name: " + this.name);
         outputStream.println("State: " + this.state);
@@ -196,37 +194,13 @@ public class WeatherData implements Comparable<WeatherData> {
         }
     }
 
-    public Boolean equalsS(WeatherData b) {        
-        if (
-            this.id != b.id ||
-            this.name != b.name ||
-            this.state !=  b.state ||
-            this.timeZone != b.timeZone ||
-            this.lat != b.lat ||
-            this.lon != b.lon ||
-            this.localDateTimeStamp != b.localDateTimeStamp ||
-            this.localDateTimeMilliseconds != b.localDateTimeMilliseconds ||
-            this.airTemp != b.airTemp ||
-            this.apparentTemp != b.apparentTemp ||
-            this.cloud != b.cloud ||
-            this.dewPT != b.dewPT ||
-            this.pressure != b.pressure ||
-            this.relativeHumidity != b.relativeHumidity ||
-            this.windDirection != b.windDirection ||
-            this.windSpeedKMH != b.windSpeedKMH ||
-            this.windSpeedKT != b.windSpeedKT
-        ) {
-            return false;
-        }
-        
-        return true;
-    }
-
     @Override
-    public int compareTo(WeatherData o) {
-        return this.sentClockTime - o.sentClockTime;
+    public int compareTo(WeatherData other) {
+        return this.sentClockTime - other.sentClockTime;
     }
     
+
+
     // Getters and setters
     public int getSentClockTime() {
         return sentClockTime;
