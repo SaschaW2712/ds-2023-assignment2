@@ -26,8 +26,13 @@ public class WeatherData implements Comparable<WeatherData> {
     int windSpeedKMH;
     int windSpeedKT;
 
-    public WeatherData() {};
     
+    /*
+     * CONSTRUCTORS
+     */
+
+    public WeatherData() {};
+
     public WeatherData(int clockTime, Long createdAtMillis) {
         this.sentClockTime = clockTime;
         this.createdAtMillis = createdAtMillis;
@@ -75,16 +80,12 @@ public class WeatherData implements Comparable<WeatherData> {
         this.windSpeedKT = windSpeedKT;
     }
 
-    public String asJSONString() {
-        try {
-            ObjectMapper objectMapper = new ObjectMapper();
-            return objectMapper.writeValueAsString(this);
-        } catch(JsonProcessingException ex) {
-            System.out.println("JSON processing error: " + ex.toString());
-            return "";
-        }
-    }
 
+    /*
+     * UTILITY FUNCTIONS
+     */
+
+    //Prints the object's data in a readable format
     public void printData(PrintStream outputStream) {
         outputStream.println("Content server id: " + this.id);
         outputStream.println("Name: " + this.name);
@@ -105,6 +106,7 @@ public class WeatherData implements Comparable<WeatherData> {
         outputStream.println("Wind speed (KT): " + this.windSpeedKT);
     }
 
+    //Given a key and value, find the WeatherData attribute matching the key and attempt to update that attribute with the value provided
     public void updateDataFromKeyValuePair(String key, String value) {
         try {
             switch (key) {
@@ -187,21 +189,24 @@ public class WeatherData implements Comparable<WeatherData> {
                 break;
 
             default:
-                // Uh oh?
+                //Do not set a value for invalid key
             }
         } catch (Exception ex) {
             System.out.println("Error in key/value parsing: " + ex.getClass().getName() + ex.getLocalizedMessage());
         }
     }
 
+    //Compares two WeatherData objects, by comparing their Lamport Clock values.
     @Override
     public int compareTo(WeatherData other) {
         return this.sentClockTime - other.sentClockTime;
     }
     
 
+    /*
+     * GETTERS AND SETTERS
+     */
 
-    // Getters and setters
     public int getSentClockTime() {
         return sentClockTime;
     }
