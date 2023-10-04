@@ -1,20 +1,12 @@
 
 import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.FileReader;
-import java.io.IOError;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.rmi.NotBoundException;
-import java.rmi.registry.Registry;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Scanner;  // Import the Scanner class
-import java.util.Stack;
 import java.util.concurrent.TimeUnit;
 
 
@@ -48,7 +40,7 @@ public class Tests extends Thread {
             TimeUnit.MILLISECONDS.sleep(1000); //Wait for server to stop fully
 
             startAggregationServer(2);
-            TimeUnit.MILLISECONDS.sleep(1000);
+            TimeUnit.MILLISECONDS.sleep(1000); //Wait for server to start up
 
             testGETClientOKRequest(3);
 
