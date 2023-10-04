@@ -2,9 +2,6 @@
 
 import java.io.PrintStream;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 public class WeatherData implements Comparable<WeatherData> {
     String id;
     int sentClockTime;
