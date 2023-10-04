@@ -10,7 +10,6 @@ To start an Aggregation Server:
     `java -cp classfiles:lib/jackson-core-2.12.5.jar:lib/jackson-databind-2.12.5.jar:lib/jackson-annotations-2.12.5.jar AggregationServer <port number>`
     E.g. `4444`
 
-
 To start a Content Server:
     - With default arguments, run `make content`
     - With custom arguments, run:
