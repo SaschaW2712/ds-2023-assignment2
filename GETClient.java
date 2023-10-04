@@ -30,6 +30,7 @@ public class GETClient {
         serverName = "";
         port = 0;
 
+        
         if (args.length >= 1) {
             String[] clientArgs = args[0].split(":");
             serverName = clientArgs[0];

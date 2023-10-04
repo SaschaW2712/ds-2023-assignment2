@@ -9,15 +9,18 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-
+//An enum used for generating file names
 enum TestingIDType {
     ContentServer,
     AggregationServer,
     GETClient
 }
-public class Tests extends Thread {
 
-    private Tests() {}
+//Runs automatic tests, covering test cases outlined in the README file, and outputs the number passed.
+//Also outputs the expected vs. observed outputs for failed tests.
+public class AutomatedTests extends Thread {
+
+    private AutomatedTests() {}
 
     public static AggregationServer aggregationServer;
     public static int passCount = 0;
@@ -58,6 +61,7 @@ public class Tests extends Thread {
         }
     }
 
+    //Tests the behaviour of a content server running with no aggregation server available.
     public static void testContentServerWithoutAvailableServer() {
         System.out.println("Running test: Content server without available aggregation server.");
 
@@ -67,6 +71,7 @@ public class Tests extends Thread {
         if (result) { passCount++; };
     }
 
+    //Tests the behaviour of a GET client running with no aggregation server available.
     public static void testGETClientWithoutAvailableServer() {
         System.out.println("Running test: GET client without available aggregation server.");
 
@@ -76,6 +81,7 @@ public class Tests extends Thread {
         if (result) { passCount++; };
     }
 
+    //Tests the behaviour of a content server sending valid PUT requests to an available aggregation server.
     public static void testContentServerOKRequests() {
         System.out.println("Running test: Correct content server PUT requests to an available aggregation server.");
 
@@ -85,6 +91,7 @@ public class Tests extends Thread {
         if (result) { passCount++; };
     }
 
+    //Tests the behaviour of a content server with an empty data file.
     public static void testContentServerDoesNotSendEmpty() {
         System.out.println("Running test: Content server does not send data if input is empty.");
 
@@ -94,6 +101,7 @@ public class Tests extends Thread {
         if (result) { passCount++; };
     }
 
+    //Tests the behaviour of a GET client sending valid GET requests to an available aggregation server.
     public static void testGETClientOKRequest(int testingID) {
         System.out.println("Running test: Correct GET client request with available data.");
 
@@ -103,6 +111,7 @@ public class Tests extends Thread {
         if (result) { passCount++; };
     }
 
+    //Tests aggregation server flushing behaviour, and the behaviour of a GET client that receives no data.
     public static void testAggregationServerFlushesOldData() {
         System.out.println("\nATTENTION!");
         System.out.println("About to test flushing of old data. A delay of 30 seconds will occur, then the tests will complete.");
@@ -124,6 +133,10 @@ public class Tests extends Thread {
         if (result) { passCount++; };
     }
 
+    /*
+     * Runs a content server in a thread, with data from a file in testWeatherData,
+     * and system output redirected to a file in testObservedOutputs
+     */
     public static void runContentServer(int testingID) {
         String outputFilePath = getObservedOutputFilePath(testingID, "content_server");
         String dataFilePath = getDataFilePath(testingID);
@@ -131,13 +144,11 @@ public class Tests extends Thread {
 
         String[] args = { url, dataFilePath, outputFilePath };
 
-        // System.out.println("Args: " + Arrays.toString(args));
 
         Thread contentServerThread = new Thread(() -> {
             ContentServer.main(args);
         });
         contentServerThread.start();
-        // System.out.println("Started content server " + testingID);
 
         try {
             contentServerThread.join();
@@ -147,6 +158,9 @@ public class Tests extends Thread {
         }
     }
 
+    /*
+     * Runs a GET client in a thread, with system output redirected to a file in testObservedOutputs
+     */
     public static void runGETClient(int testingID) {
         String outputFilePath = "testObservedOutputs/get_client_" + String.valueOf(testingID);
         String url = "localhost:4567";
@@ -168,6 +182,9 @@ public class Tests extends Thread {
         }
     }
 
+    /*
+     * Starts an aggregation server in a thread, with system output redirected to a file in testObservedOutputs
+     */
     public static void startAggregationServer(int testingID) throws IOException {
         String portNumber = "4567";
         String outputFilePath = "testObservedOutputs/aggregation_server_" + String.valueOf(testingID);
@@ -176,7 +193,6 @@ public class Tests extends Thread {
 
         aggregationServer = new AggregationServer();
 
-        // System.out.println("Starting aggregation server " + String.valueOf(testingID));
         Thread serverThread = new Thread(() -> {
             aggregationServer.main(args);
         });
@@ -184,24 +200,31 @@ public class Tests extends Thread {
         serverThread.start();
     }
 
+    // Shuts down the currently running aggregation server.
     public static void stopAggregationServer() {
-        // System.out.println("Stopping aggregation server");
         aggregationServer.shutdown();
         aggregationServer = null;
     }
 
+    // For a given testingID and test type, returns the path to that tester's observed (actual) output file.
     public static String getObservedOutputFilePath(int testingID, String type) {
         return "testObservedOutputs/" + type + "_" + String.valueOf(testingID);
     }
 
+    // For a given testingID and test type, returns the path to that tester's expected output file.
     public static String getExpectedOutputFilePath(int testingID, String type) {
         return "testExpectedOutputs/" + type + "_" + String.valueOf(testingID);
     }
 
+    // For a given testingID, returns the path to that tester's weather data input file.
     public static String getDataFilePath(int testingID) {
         return "testWeatherData/content_server_" + String.valueOf(testingID) + ".txt";
     }
 
+    /*
+     * For a given testingID and test type, returns whether the tester's expected and observed outputs match,
+     * and prints the expected vs. observed output if it doesn't match.
+     */ 
     public static boolean assertEqualFileContents(
         int testingID,
         String type
@@ -228,36 +251,6 @@ public class Tests extends Thread {
             System.out.println("Test error:" + e.getLocalizedMessage());
             System.out.print(e);
             return false;
-        }
-    }
-
-    //Generate arguments to pass to client
-    //Takes a string for input and output file names (can be "sysout"), and whether to append "clearall" to the end of the arguments
-    public static String[] getClientArgsFromFile(
-        String inputFileName,
-        String outputFileName,
-        boolean appendClearAll
-    ) throws IOException {
-        try {
-            String[] inputFileLines = getFileLinesAsArray(inputFileName);
-
-            ArrayList<String> clientArgs = new ArrayList<String>();
-
-            for (String line : inputFileLines) {
-                clientArgs.add(line);
-            }
-
-            clientArgs.add(outputFileName);
-
-            // if (appendClearAll) {
-            //     clientArgs.add("clearall");
-            // }
-
-            return clientArgs.toArray(new String[clientArgs.size()]);
-        } catch(Exception e) {
-            System.out.println("getClientArgsFromFile error:");
-            System.out.print(e);
-            throw(e);
         }
     }
 

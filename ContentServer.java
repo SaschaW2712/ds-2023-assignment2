@@ -18,6 +18,7 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+// An enum representing the type of a server request.
 enum RequestType {
     Clock,
     WeatherData
@@ -41,6 +42,7 @@ public class ContentServer {
         clock = new LamportClock();
         retries = 0;
         
+        //Confirm that valid arguments have been provided
         if (args.length >= 2) {
             String[] clientArgs = args[0].split(":");
             serverName = clientArgs[0];
@@ -51,6 +53,7 @@ public class ContentServer {
             return;
         }
 
+        //Redirect system output if requested
         if (args.length == 3) {
             try {
                 PrintWriter writer = new PrintWriter(args[2]);
@@ -73,7 +76,7 @@ public class ContentServer {
         
         retries = 0;
 
-        //Send data
+        //Send weather data to aggregation server
         updateWeatherDataIfChanged();
         sendAllWeatherDataToServer();
         if (retries >= 3) {
@@ -81,6 +84,7 @@ public class ContentServer {
         }
     }
 
+    // Sends a GET "/clock" request to the aggregation server, and handles the response.
     public static void getServerClock() {
         try (Socket socket = new Socket(serverName, port)) {
             
@@ -111,6 +115,8 @@ public class ContentServer {
         }    
     }
     
+    //Checks if the weather data file has been modified since last sent, and updates the server's stored weather data if changed.
+    //This is used immediately before sending a PUT request, to ensure the data sent is the latest in the file.
     public static void updateWeatherDataIfChanged() {
         File dataFile = new File(inputFilePath);
 
@@ -125,6 +131,7 @@ public class ContentServer {
         }
     }
 
+    //Sends each stored WeatherData object to the aggregation server.
     public static void sendAllWeatherDataToServer() {
         for (WeatherData data : weatherData) {
             //Update data with new clock time in case a previous request updated the content server's clock
@@ -133,6 +140,7 @@ public class ContentServer {
         }
     }
 
+    //Sends a single WeatherData object to the aggregation server, and handles the response. 
     public static void sendSingleWeatherDataToServer(
         WeatherData data
     ) {
@@ -168,6 +176,7 @@ public class ContentServer {
         }
     }
 
+    //Writes the request for GET "/clock" to a given PrintWriter.
     public static void writeClockRequest(
         PrintWriter writer
     ) { 
@@ -178,6 +187,7 @@ public class ContentServer {
         writer.println();
     }
     
+    //Writes the request for PUT weather data to a given PrintWriter.
     public static void writeDataPUTRequest(PrintWriter writer, String hostname, String jsonBodyString) {
         // Send the PUT request
         writer.println("PUT / HTTP/1.1");
@@ -189,6 +199,7 @@ public class ContentServer {
         writer.println(jsonBodyString);
     }
     
+    //Handles an aggregation server response
     public static void handleServerResponse(BufferedReader reader) {
         try {
             //Read server response
@@ -211,13 +222,13 @@ public class ContentServer {
         }
     }
 
+    //Retries the given request type up to 3 times (for a total of 4 attempts including the initial).
     public static void retryOnError(RequestType requestType) {
-        //Client will retry connection & PUT request up to three times
         if (retries < 3) {
             retries++;
 
             try {
-                //Sleeps for a short period in case the issue can be resolved with time
+                //Sleep for a short period in case the issue can be resolved with time
                 TimeUnit.MILLISECONDS.sleep(1000);
             } catch(InterruptedException e) {
                 outputStream.println("Error: Interrupted");
@@ -237,6 +248,7 @@ public class ContentServer {
         }
     }
 
+    //Parses the content server's input file into an ArrayList of WeatherData objects.
     public static ArrayList<WeatherData> parseInputFile(
         String filePathString
     ) throws IOException {
